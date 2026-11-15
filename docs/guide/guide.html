@@ -62,7 +62,7 @@ td.y { color: var(--ok); } td.n { color: #c3b6bf; }
   <div class="t">
     <h1>lin-<span>sing</span></h1>
     <p>换一首歌，lin 就能对着口型、踩着节拍把它唱出来。<br>智能体驱动，全程本地，开源免费。</p>
-    <span class="tag">Claude</span><span class="tag">ChatGPT / Codex</span><span class="tag">DeepSeek</span><span class="tag">Trae</span><span class="tag">Cursor</span><span class="tag">Unity 6 · VRM</span>
+    <span class="tag">Claude</span><span class="tag">ChatGPT / Codex</span><span class="tag">DeepSeek</span><span class="tag">Kimi</span><span class="tag">Trae</span><span class="tag">Cursor</span><span class="tag">Unity 6 · VRM</span>
   </div>
 </div>
 <div class="wrap">
@@ -110,7 +110,7 @@ td.y { color: var(--ok); } td.n { color: #c3b6bf; }
 <p class="lead">需要 Python 3.10+、ffmpeg 和 Unity 6；有 NVIDIA 显卡更快。</p>
 <div class="steps">
   <div class="step"><div class="k"></div><div class="b"><b>一键安装</b><p>Windows 双击 install.bat；macOS / Linux 运行 install.sh。它会建好环境、装好依赖、下载模型并自检。</p><span class="cmd">python linsing.py doctor</span></div></div>
-  <div class="step"><div class="k"></div><div class="b"><b>第一次打开工程</b><p>用 Unity 6 打开 unity/，点菜单 LinSing / First-time Setup。它会重新导入 lin 并量好她的尺寸。</p></div></div>
+  <div class="step"><div class="k"></div><div class="b"><b>装 Unity 6000.3.28f1，第一次打开工程</b><p>在 unity.com/download 装好 Unity Hub，再用一键安装链接装这个版本（链接见 README）。中国大陆用户也可以从 unity.cn 下载（未经测试）。用它打开 unity/，点菜单 LinSing / First-time Setup。</p><span class="cmd">unityhub://6000.3.28f1/8f082d2fe476</span></div></div>
   <div class="step"><div class="k"></div><div class="b"><b>换上你的歌，附上歌词</b><p>把歌词发给智能体，或者存成 txt：一行一句；要显示译文就写成“原文 | 译文”。没有歌词也行，程序会自己听，但准确度会低一些。</p><span class="cmd">python linsing.py make 我的歌.mp3 --lyrics 歌词.txt --mood sad</span></div></div>
   <div class="step"><div class="k"></div><div class="b"><b>实时预览</b><p>在 Unity 里点 LinSing / Load Song Folder，选中 songs/我的歌，再点 Play，就能带声音实时看。</p></div></div>
   <div class="step"><div class="k"></div><div class="b"><b>（可选）改编舞</b><p>可以对智能体说：“副歌第二句双手打开，最后一句俯身贴麦。”也可以打开网页编辑器，用鼠标自己改。改完会自动烘焙并质检。</p><span class="cmd">python linsing.py studio ../songs/我的歌</span></div></div>
@@ -126,6 +126,7 @@ python linsing.py render ../songs/我的歌</span></div></div>
   <tr><td>Claude</td><td>CLAUDE.md 指向 AGENTS.md；也可以注册 MCP 服务 <code>python pipeline/mcp_server.py</code></td></tr>
   <tr><td>ChatGPT / Codex</td><td>直接读 AGENTS.md；支持 MCP 的客户端注册同一个服务；只有 API 时用 agent_tools.json 做函数调用</td></tr>
   <tr><td>DeepSeek</td><td>放进任何能读 AGENTS.md 或接 MCP 的工具里用；直接调 API 时同样用 agent_tools.json</td></tr>
+  <tr><td>Kimi 桌面版</td><td>用 Kimi Code 打开仓库并信任这个文件夹，就会自动读取 AGENTS.md、MCP 配置（.kimi-code/mcp.json）和技能，输入 <code>/skill:lin-sing</code> 即可开始</td></tr>
   <tr><td>Trae</td><td>.trae/rules/project_rules.md 指向 AGENTS.md，再在 Trae 里添加 MCP 服务</td></tr>
   <tr><td>Cursor / Copilot</td><td>.cursor/rules/ 和 .github/copilot-instructions.md</td></tr>
 </table>
@@ -160,5 +161,5 @@ python linsing.py render ../songs/我的歌</span></div></div>
 </div>
 <p class="lead" style="margin-top:16px">Mixamo 动作因为 Adobe 条款不能再分发，没有包含。代码使用 MIT 协议，各项资产的授权见 ASSETS.md。</p>
 
-<div class="foot"><span>lin-sing · 角色 lin by lin2</span><span>github.com/jinglinyao/lin-sing-agent</span></div>
+<div class="foot"><span>lin-sing 0.1.0-beta · 角色 lin by lin2 · 安全说明见 SECURITY.md</span><span>github.com/jinglinyao/lin-sing-agent</span></div>
 </div></body></html>

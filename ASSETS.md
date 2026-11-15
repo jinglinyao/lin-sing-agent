@@ -9,6 +9,14 @@
 | Quaternius Universal Animation Library 1、2（Standard） | `unity/Assets/MV/Motion/Quaternius/` | https://quaternius.com | CC0 1.0（公有领域） |
 | BEAT2 动捕片段（14 段，已转换并清洗） | `unity/Assets/MV/Data/Clips/b2_*.json` | BEAT2 数据集（H. Liu 等，PantoMatrix / EMAGE），https://huggingface.co/datasets/H-Liu1997/BEAT2 | Hugging Face 页面标注为 Apache-2.0。**注意**：早期的 BEAT 数据集声明为非商用。商用前请自行核实，拿不准就删掉这些文件，管线不依赖它们。 |
 
+## 需要另外安装的软件（不随仓库分发）
+| 软件 | 版本 | 下载 | 授权 |
+|---|---|---|---|
+| Unity 编辑器 | 6000.3.28f1（Unity 6.3 LTS） | Unity Hub：https://unity.com/download ；一键安装：`unityhub://6000.3.28f1/8f082d2fe476`；发布页：https://unity.com/releases/editor/whats-new/6000.3.28f1 ；历史版本：https://unity.com/releases/editor/archive ；中国大陆：https://unity.cn/releases （未经测试） | Unity 软件条款（Personal 版对个人和小团队免费，以官方条款为准） |
+| UniVRM | 0.131.4（打开工程时由 Unity 包管理器从 GitHub 自动下载） | https://github.com/vrm-c/UniVRM | MIT |
+| ffmpeg | 带 libass 的完整版 | https://www.gyan.dev/ffmpeg/builds/ （Windows），或 `winget install Gyan.FFmpeg` | LGPL / GPL（视构建而定） |
+| Python 依赖 | 见 `pipeline/requirements.txt` | pip | 各自的开源协议 |
+
 ## 没有放进仓库的东西
 - **Mixamo 动作**：Adobe 的条款不允许把动作文件单独再分发。需要的话请自己登录 mixamo.com 下载 FBX，放到 `unity/Assets/MV/Motion/Mixamo/`，然后运行 `MvSetup.ImportMixamo()` 和 `MvSetup.BakeClips()`。
 - **歌曲**：版权归原作者所有。你自己的音频放在 `songs/` 下，这个目录不进 git。

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "lin-sing": {
+      "command": "python",
+      "args": [
+        "pipeline/mcp_server.py"
+      ]
+    }
+  }
+}

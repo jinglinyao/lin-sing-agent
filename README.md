@@ -1,5 +1,7 @@
 # lin-sing：让智能体驱动 3D 角色 lin 唱任何一首歌
 
+> **当前版本：0.1.0-beta（测试版）**。可能遇到的错误和解决方法见 [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md)，安全说明见 [SECURITY.md](SECURITY.md)。
+
 ![lin-sing 说明长图](docs/lin-sing-guide.png)
 
 给一段音频（10 分钟以内），lin 就会站到立麦前把它唱出来：
@@ -55,7 +57,7 @@ cd lin-sing-agent
    - Python 3.10+、ffmpeg。
    - PyTorch：按你的显卡版本安装。
    - 然后运行 `pip install -r pipeline/requirements.txt`。
-2. 安装 Unity 6（6000.3.x），设置环境变量 `LINSING_UNITY`，指向 `Unity.exe`。
+2. 安装 **Unity 6000.3.28f1**（本工程用的版本，详见下面的“下载 Unity”）。装好后运行 `python pipeline/linsing.py doctor`，它会自动找到 Unity 并记住路径。
 3. 第一次使用：用 Unity 打开 `unity/`，点菜单 **LinSing / First-time Setup**。它会重新导入 lin 并量好尺寸。
 4. 做一首歌：
    ```bash
@@ -73,6 +75,23 @@ cd lin-sing-agent
 - 音频最长 10 分钟。
 - 一次输入 5 分钟以上的音频，电脑可能会卡顿：人声分离、对齐、动作烘焙的耗时和显存都随长度增长。程序能跑完，只是慢；也可以先把歌切成几段。
 
+## 下载 Unity（工程版本 6000.3.28f1）
+| 方式 | 链接 |
+|---|---|
+| 先装 Unity Hub | https://unity.com/download |
+| 用 Unity Hub 一键安装这个版本 | `unityhub://6000.3.28f1/8f082d2fe476`（复制到浏览器地址栏打开，会自动唤起 Unity Hub） |
+| 这个版本的发布页（可手动下载安装包） | https://unity.com/releases/editor/whats-new/6000.3.28f1 |
+| 历史版本总览 | https://unity.com/releases/editor/archive |
+| 中国大陆（Unity 中国官网） | https://unity.cn/releases （中国版编辑器的版本号和国际版不同，选 6000.3 系列最接近的版本；**未经测试**） |
+
+- 只需要 Windows 或 macOS 的编辑器本体，不用勾选 Android / iOS 等平台模块。
+- Unity Personal 对个人和小团队免费，具体以 Unity 官方条款为准。
+- 版本不一致时，Unity 会提示升级或重新导入工程；其他 6000.3.x 版本一般也能用，但没有测试过。
+
+## 中国大陆用户
+- 一键安装加参数 `cn`：`install.bat cn` 或 `bash install.sh cn`。pip 会改用清华源，模型从 hf-mirror.com 下载。
+- 访问 GitHub 需要代理时，克隆前先设置 `HTTPS_PROXY`。
+
 ## 工具
 | 命令 | 作用 |
 |---|---|
@@ -88,7 +107,11 @@ cd lin-sing-agent
 | ChatGPT / Codex | 读 `AGENTS.md`；支持 MCP 的客户端注册同一个服务；只用 API 时用 `pipeline/agent_tools.json` 做函数调用 |
 | DeepSeek | 在任何能读 `AGENTS.md` 或接 MCP 的工具里用（OpenCode、Cline、兼容 Claude Code 的接口等）；直接用 API 时同样用 `agent_tools.json` |
 | Trae | 读 `.trae/rules/project_rules.md`，它指向 `AGENTS.md`；在 Trae 里添加 MCP 服务 |
+| Kimi（中国版桌面端 Kimi Code） | 用 Kimi Code 桌面版打开仓库根目录，信任这个文件夹后，会自动读取 `AGENTS.md`、加载项目里的 MCP 服务 `.kimi-code/mcp.json` 和技能 `.agents/skills/lin-sing`；在输入框里输入 `/skill:lin-sing 歌曲路径` 就能直接开始 |
 | Cursor / Copilot | 读 `.cursor/rules/`、`.github/copilot-instructions.md` |
+
+- Kimi Code 桌面版下载：https://www.kimi.com/code/docs/kimi-code-desktop/getting-started.html（Windows / macOS / Linux 都有；中国大陆用 kimi.com 账号登录。没有订阅 Kimi 会员的账号用不了官方模型）。
+- Claude Code 同样会读取项目里的 `.mcp.json`，自动接入 lin-sing 的 MCP 服务。
 
 你可以直接对智能体说：“用 `songs/我的歌` 的歌词改一下编舞，副歌第二句要双手打开，然后渲染。”
 
@@ -111,6 +134,10 @@ songs/          你的歌（不进 git）
 docs/           设计步骤、说明长图
 AGENTS.md       给所有智能体的说明
 ```
+
+## 安全与已知问题
+- [SECURITY.md](SECURITY.md)：lin-sing 在你的电脑上做什么、哪些内容会联网、本地服务怎么防护、怎么报告安全问题。
+- [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md)：Beta 版的已知问题和解决方法，按安装、Unity、歌词、动作、性能、智能体客户端分类。
 
 ## 许可
 - 代码：MIT。

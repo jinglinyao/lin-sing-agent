@@ -18,6 +18,12 @@ import os, sys, json, glob, shutil, argparse, subprocess, time
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 MAX_S, WARN_S = 600.0, 300.0
+# When an agent reads this program's output through a pipe, Python writes in the system code page (GBK on Chinese Windows), which has no
+# ✓ / ✗ and no kana in some cases - the report would crash. Piped output is UTF-8; a real console is left alone.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        if not _s.isatty(): _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception: pass
 PY = [sys.executable, "-X", "utf8"]
 
 

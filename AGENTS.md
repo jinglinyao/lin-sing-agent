@@ -95,4 +95,11 @@ stdio 服务：`python pipeline/mcp_server.py`，提供以下工具：
 - `linsing_set_choreo`
 - `linsing_render`
 
+项目里已经放好了客户端配置：
+- Claude Code：`.mcp.json`；
+- Kimi Code CLI / 桌面版：`.kimi-code/mcp.json`，单次调用超时设为 1 小时；
+- 通用技能：`.agents/skills/lin-sing/SKILL.md`，Kimi 可以用 `/skill:lin-sing` 调用。
+
+客户端第一次加载项目级 MCP 时会弹出信任提示，请让用户核对命令（`python pipeline/mcp_server.py`）后再确认。
+
 不支持 MCP、只支持函数调用的模型（OpenAI / DeepSeek API）用 `pipeline/agent_tools.json` 里的工具定义，执行时调用对应的 `linsing.py` 命令即可。

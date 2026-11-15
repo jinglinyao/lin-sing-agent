@@ -65,6 +65,8 @@ kbd { background: #20254a; border: 1px solid var(--line); border-radius: 4px; pa
 <audio id="au" preload="auto"></audio>
 <script>
 const $ = s => document.querySelector(s);
+const TOKEN = (document.querySelector('meta[name="lin-token"]') || {}).content || "";
+const api = (p, o = {}) => fetch(p, { ...o, headers: { ...(o.headers || {}), "X-LinSing-Token": TOKEN } });
 const cv = $("#cv"), ctx = cv.getContext("2d"), au = $("#au");
 let D = null, sheet = [], sel = -1, view = { t0: 0, pps: 40 }, range = null, drag = null, dirty = false;
 const ROWS = { ruler: [0, 22], wave: [22, 70], bars: [92, 20], lines: [112, 44], moves: [156, 52], faces: [208, 24], qa: [232, 18] };
@@ -73,7 +75,7 @@ const fmt = t => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`
 const X = t => (t - view.t0) * view.pps, T = x => view.t0 + x / view.pps;
 
 async function load() {
-  D = await (await fetch("/api/data")).json(); sheet = JSON.parse(JSON.stringify(D.choreo.sheet));
+  D = await (await api("/api/data")).json(); sheet = JSON.parse(JSON.stringify(D.choreo.sheet));
   au.src = "/media/song.wav"; $("#mood").value = D.choreo.mood || "neutral";
   $("#songinfo").textContent = `${D.song.name} · ${fmt(D.song.duration)} · ${Math.round(D.song.bpm)} BPM · ${D.song.lang} · ${sheet.length} 条动作`;
   $("#move").innerHTML = D.choreo.moves.map(m => `<option value="${m}">${m}（${({"-1":"无人声","0":"安静","1":"中等","2":"饱满"})[D.move_levels[m]]}）</option>`).join("");
@@ -168,20 +170,20 @@ function showQA(q) {
     bad.map(c => `<div class="qa ${c.severity === "fail" ? "f" : "w"}">${c.severity === "fail" ? "✗" : "!"} ${c.name}：${c.value}${c.where.length ? "（" + c.where.slice(0, 4).join("，") + "）" : ""}<br><span class="hint">${c.advice}</span></div>`).join("");
 }
 async function poll(after) {
-  const s = await (await fetch("/api/task")).json(); log(s.running ? `${s.name} 进行中…\n` + s.log.split("\n").slice(-12).join("\n") : (s.log.split("\n").slice(-14).join("\n") || "空闲"));
+  const s = await (await api("/api/task")).json(); log(s.running ? `${s.name} 进行中…\n` + s.log.split("\n").slice(-12).join("\n") : (s.log.split("\n").slice(-14).join("\n") || "空闲"));
   if (s.running) { setTimeout(() => poll(after), 1000); return; }
   ["#save", "#prev", "#full"].forEach(b => $(b).disabled = false); if (after) after(s);
 }
 $("#save").onclick = async () => {
   ["#save", "#prev", "#full"].forEach(b => $(b).disabled = true);
-  const r = await (await fetch("/api/choreo", { method: "POST", body: JSON.stringify({ sheet, mood: $("#mood").value, bake: true }) })).json();
+  const r = await (await api("/api/choreo", { method: "POST", body: JSON.stringify({ sheet, mood: $("#mood").value, bake: true }) })).json();
   if (r.error) { log(r.error); ["#save", "#prev", "#full"].forEach(b => $(b).disabled = false); return; }
-  dirty = false; $("#save").textContent = "保存并烘焙"; poll(async () => { const d = await (await fetch("/api/data")).json(); D.qa = d.qa; D.lines = d.lines; showQA(D.qa); draw(); });
+  dirty = false; $("#save").textContent = "保存并烘焙"; poll(async () => { const d = await (await api("/api/data")).json(); D.qa = d.qa; D.lines = d.lines; showQA(D.qa); draw(); });
 };
 async function render(from, to) {
   if (dirty) { log("先“保存并烘焙”，再渲染"); return; }
   ["#save", "#prev", "#full"].forEach(b => $(b).disabled = true);
-  await fetch("/api/render", { method: "POST", body: JSON.stringify(from == null ? {} : { from, to }) });
+  await api("/api/render", { method: "POST", body: JSON.stringify(from == null ? {} : { from, to }) });
   poll(s => { if (s.result && s.result.video) { const v = $("#vid"); v.style.display = ""; v.src = "/media/" + s.result.video + "?" + Date.now(); v.play(); } });
 }
 $("#prev").onclick = () => { let r = range; if (!r && sel >= 0) r = [Math.max(0, sheet[sel].t - 2), Math.min(D.song.duration, (sheet[sel + 1] ? sheet[sel + 1].t : D.song.duration) + 2)]; if (!r) { log("先 Shift+拖动 选一段，或选中一条动作"); return; } render(Math.round(r[0] * 10) / 10, Math.round(r[1] * 10) / 10); };

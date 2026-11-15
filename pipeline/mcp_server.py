@@ -11,7 +11,14 @@ Tools:
 """
 import os, sys, json, subprocess
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
-CLI = [sys.executable, "-X", "utf8", os.path.join(HERE, "linsing.py")]
+def _python():
+    """the repository's own environment (install.bat / install.sh make .venv) when there is one: the MCP client may start this server with
+    whatever `python` is on its PATH, which need not have the pipeline's packages"""
+    root = os.path.dirname(HERE)
+    for p in (os.path.join(root, ".venv", "Scripts", "python.exe"), os.path.join(root, ".venv", "bin", "python")):
+        if os.path.exists(p): return p
+    return sys.executable
+CLI = [_python(), "-X", "utf8", os.path.join(HERE, "linsing.py")]
 
 TOOLS = [
     dict(name="linsing_check", description="Check an audio file's length for lin-sing (max 10 minutes; over 5 minutes it works but may make the computer stutter).",
@@ -49,6 +56,11 @@ def call(name, a):
 
 
 def main():
+    # MCP messages are UTF-8. A client that starts this with a plain `python` on Windows leaves the console code page (cp1252, GBK on
+    # Chinese Windows) in place, and the first Chinese character in a reply would crash the server - so both pipes are set to UTF-8 here.
+    for stream in (sys.stdin, sys.stdout):
+        try: stream.reconfigure(encoding="utf-8")
+        except Exception: pass
     for line in sys.stdin:
         try: msg = json.loads(line)
         except Exception: continue

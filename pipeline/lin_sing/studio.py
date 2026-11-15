@@ -6,7 +6,7 @@ Shows the waveform, bars, lyric lines, the dope sheet (moves), faces and QA mark
 (move / face / level / start time, split, delete); saves and bakes (QA shown); renders a preview of a selected range and plays it in the page.
 Listens on 127.0.0.1 only.
 """
-import os, sys, json, threading, subprocess, webbrowser, mimetypes, re
+import os, sys, json, threading, subprocess, webbrowser, mimetypes, re, secrets
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import numpy as np
 
@@ -52,6 +52,10 @@ def run_task(name, cmd):
 
 def serve(F, port=8765, open_browser=True):
     F = os.path.abspath(F); page = os.path.join(HERE, "studio.html")
+    # Security: the server listens on 127.0.0.1 only; besides, every request must name this machine as its Host (a web page elsewhere cannot
+    # reach it by DNS rebinding), and every /api request must carry the token handed to the page at start-up (another site's page cannot
+    # read it, so it cannot make this server bake, render or rewrite the dope sheet).
+    token = secrets.token_urlsafe(18); hosts = {f"127.0.0.1:{port}", f"localhost:{port}"}
 
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a): pass
@@ -59,8 +63,16 @@ def serve(F, port=8765, open_browser=True):
             b = body if isinstance(body, bytes) else (json.dumps(body, ensure_ascii=False) if not isinstance(body, str) else body).encode("utf-8")
             self.send_response(code); self.send_header("Content-Type", ctype); self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
 
+        def guard(self, need_token):
+            if self.headers.get("Host", "") not in hosts: self.send(403, {"error": "wrong host"}); return False
+            if need_token and not secrets.compare_digest(self.headers.get("X-LinSing-Token", ""), token): self.send(403, {"error": "missing token"}); return False
+            return True
+
         def do_GET(self):
-            if self.path in ("/", "/index.html"): return self.send(200, open(page, "rb").read(), "text/html; charset=utf-8")
+            if not self.guard(self.path.startswith("/api/")): return
+            if self.path in ("/", "/index.html"):
+                html = open(page, encoding="utf-8").read().replace("</head>", f'<meta name="lin-token" content="{token}"></head>', 1)
+                return self.send(200, html, "text/html; charset=utf-8")
             if self.path == "/api/data": return self.send(200, data(F))
             if self.path == "/api/task": return self.send(200, TASK)
             if self.path.startswith("/media/"):
@@ -87,6 +99,7 @@ def serve(F, port=8765, open_browser=True):
             self.send(404, {"error": "not found"})
 
         def do_POST(self):
+            if not self.guard(True): return
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0)) or 0) or b"{}")
             py = [sys.executable, "-X", "utf8", os.path.join(PIPE, "linsing.py")]
             if self.path == "/api/choreo":

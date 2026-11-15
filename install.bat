@@ -2,6 +2,12 @@
 chcp 65001 >nul
 rem lin-sing one-click install (Windows): a Python environment in .venv, PyTorch for your GPU, the pipeline's packages, then the check.
 cd /d "%~dp0"
+rem install.bat cn : mainland China mirrors (pip from Tsinghua, models from hf-mirror.com)
+if /i "%~1"=="cn" (
+  echo 使用国内镜像：pip 清华源，模型 hf-mirror.com
+  set "PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple"
+  set "HF_ENDPOINT=https://hf-mirror.com"
+)
 where python >nul 2>&1 || (echo [缺少] 没找到 Python。请先安装 Python 3.10+（https://www.python.org，勾选 Add to PATH）& pause & exit /b 1)
 where ffmpeg >nul 2>&1 || (echo [注意] 没找到 ffmpeg，正在用 winget 安装... & winget install -e --id Gyan.FFmpeg)
 if not exist .venv (python -m venv .venv || (echo 创建虚拟环境失败 & pause & exit /b 1))
