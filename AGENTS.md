@@ -6,6 +6,7 @@
 - Python 3.10+，`pip install -r pipeline/requirements.txt`；系统里要有 `ffmpeg` / `ffprobe`。
 - 有 NVIDIA 显卡最好（Demucs、Whisper、MMS_FA 都会用 CUDA）；没有也能跑，只是慢。
 - Unity 6（6000.3.x）。环境变量 `LINSING_UNITY` 指向 `Unity.exe`。
+- 一键安装：Windows 运行 `install.bat`，macOS / Linux 运行 `install.sh`。装完会自动执行 `doctor --fix`。
 - 第一次用：在 Unity 里打开 `unity/`，执行菜单 **LinSing / First-time Setup**；或者在命令行运行：
   `Unity.exe -batchmode -quit -projectPath unity -executeMethod LinSingTools.BatchSetup`。
 
@@ -18,6 +19,10 @@
 | 载入 Unity（编辑器需关闭） | `python linsing.py load ../songs/<名字>` |
 | 渲染成 mp4（带字幕） | `python linsing.py render ../songs/<名字>` |
 | 只渲染一段预览（720p） | `python linsing.py render ../songs/<名字> --from 60 --to 90` |
+| 质检（几秒） | `python linsing.py qa ../songs/<名字>`（`bake` 结束时也会自动跑） |
+| 深度质检（Unity 逐帧穿模扫描，几分钟） | `python linsing.py qa ../songs/<名字> --deep` |
+| 网页时间轴编辑器 | `python linsing.py studio ../songs/<名字>` |
+| 环境自检 / 下载模型 | `python linsing.py doctor [--fix]` |
 
 ## 用户给歌词时（推荐）
 用户把歌词发给你时，原样存成 `songs/<名字>/lyrics.txt`（UTF-8，一行一句，保持原来的分行），再运行 `make --lyrics`。
@@ -61,6 +66,7 @@
 - `beat t ...`：副歌里随拍子轻推镜头、灯光呼吸。
 
 ## 验收（交付前必须做）
+0. 质检报告在 `qa.md` / `qa.json`。每一项都有结果、时间点和建议：先按建议改，`bake` 后再看，直到没有 ✗。交付前至少跑一次 `qa --deep`（检查真实网格穿模）。
 1. 看 `make` / `bake` 的输出：
    - `SQUEEZED` 表示两个动作挤得太近，要拉开时间。
    - `low confidence` 表示那几句对齐不准，多半是嘶吼、假声或歌词不对。
@@ -76,6 +82,7 @@
 
 ## 不要做的事
 - 不要把歌曲音频、渲染出的帧或视频提交进仓库（`songs/` 已在 .gitignore 里）。
+- `render` 是分段渲染的（每段 20 秒，缓存在 `songs/<名字>/chunks/`）。改了编舞再渲染时只重渲受影响的段，不要手动删缓存。
 - 提交前先运行 `python linsing.py clean-scene`：载入歌曲时，场景文件会记下本机的完整路径，要先清掉。
 - 不要把 Mixamo 动作文件放进仓库（Adobe 条款不允许再分发）。
 - 不要删除 `unity/Library` 以外的 Unity 生成文件。

@@ -187,6 +187,7 @@ def enrich(events, side, line_t, strong, T1, grips, seed=0):
         nxt = events[i + 1]["t"] if i + 1 < len(events) else T1
         if any(e["pose"] is g or np.allclose(np.array(e["pose"]["pos"]), np.array(g["pos"])) for g in grips): continue
         if e.get("name") in ("beat", "back", "drift"): continue
+        rnd = random.Random(seed * 100003 + int(round(e["t"] * 1000)))      # its own dice: an edit elsewhere does not change this hold (chunked re-render)
         base = e["pose"]; last = e["t"]; k = rnd.randrange(len(VAR))
         marks = sorted(set([x for x in line_t if e["t"] + 0.9 < x < nxt - 1.9] + [x for x in strong if e["t"] + 0.9 < x < nxt - 1.9]))
         t = last + 2.2
@@ -206,6 +207,33 @@ def enrich(events, side, line_t, strong, T1, grips, seed=0):
 FACE = {"neutral": {-1: ("calm", 0.6), 0: ("tender", 0.7), 1: ("calm", 0.9), 2: ("plead", 0.6)},
         "sad":     {-1: ("calm", 0.7), 0: ("sad", 0.8), 1: ("plead", 0.8), 2: ("pain", 0.7)},
         "bright":  {-1: ("calm", 0.5), 0: ("tender", 0.8), 1: ("bright", 0.9), 2: ("joy", 0.9)}}
+
+
+def route_around_mic(events, sx, rig, grips, clear=0.09):
+    """A change of pose whose straight path brings the hand (wrist and fingers) within `clear` of the microphone or the stand gets a via
+    point beside the path, out to her side - found by the deep QA (real-mesh scan): a hand sweeping from the side to the chest, or leaving
+    the stand, brushed the microphone. Arrivals at the microphone / stand keep their own approach."""
+    mp, md, pole = np.array(rig["micPos"]), np.array(rig["micDir"]), np.array(rig["micPole"])
+    segs = [(mp - 0.03 * md, pole), (np.array([pole[0], 0.0, pole[2]]), pole)]
+    def dist_seg(p, a, b):
+        ab = b - a; u = np.clip(np.dot(p - a, ab) / np.dot(ab, ab), 0, 1); return float(np.linalg.norm(p - (a + u * ab)))
+    def is_grip(pose): return any(np.allclose(np.array(pose["pos"]), np.array(g["pos"])) for g in grips)
+    added = 0
+    for i in range(1, len(events)):
+        A, B = events[i - 1]["pose"], events[i]["pose"]
+        if is_grip(B) or events[i].get("via") is not None: continue
+        best = 9.0; worst_u = 0.5
+        for u in np.linspace(0, 1, 21):
+            w = (1 - u) * np.array(A["pos"]) + u * np.array(B["pos"]); f = (1 - u) * np.array(A["fin"]) + u * np.array(B["fin"]); f /= max(1e-9, np.linalg.norm(f))
+            for p in (w, w + 0.08 * f, w + 0.16 * f):
+                dd = min(dist_seg(p, a, b) for a, b in segs)
+                if dd < best: best, worst_u = dd, u
+        if best < clear:
+            mid = (1 - worst_u) * np.array(A["pos"]) + worst_u * np.array(B["pos"])
+            events[i]["via"] = mid + np.array([sx * (clear - best + 0.04), 0.01, -0.02]); added += 1
+            room = (events[i]["t"] - events[i - 1]["t"] - 0.06) * 0.87                # (durations are divided by the style speed)
+            events[i]["dur"] = max(events[i].get("dur") or 0.0, min(1.0, room))        # the way round is longer: give it the time there is
+    return added
 
 
 def write_face(folder, sheet, mood="neutral", log=print):
@@ -259,7 +287,7 @@ def bake(folder, log=print):
             if not r_on and k > 0:
                 ta_r = max(ta - 0.15, R[-1]["t"] + 0.6)
                 R.append(E(ta_r, P["MIC"], "to the mic", via=MICVIA, over=0.0, antic=0.02, turn_in=0.7))
-                rg += [(ta_r - 0.42, 0.0), (ta_r - 0.02, 1.0)]; rc += [(ta_r - 0.10, 0.0), (ta_r + 0.28, 1.0)]; r_on = True
+                rg += [(ta_r - 0.42, 0.0), (ta_r - 0.02, 1.0)]; rc += [(ta_r + 0.02, 0.0), (ta_r + 0.36, 1.0)]; r_on = True          # the fingers close once the hand is there
         elif k > 0:
             pose = P[m["R"]]
             if r_on:
@@ -273,7 +301,7 @@ def bake(folder, log=print):
             if not l_on and k > 0:
                 ta_l = max(ta + 0.25, L[-1]["t"] + 0.6)
                 L.append(E(ta_l, M(P["POLE"]), "to the stand", via=POLE_VIA, over=0.0, antic=0.02, turn_in=0.55))
-                lg += [(ta_l - 0.40, 0.0), (ta_l - 0.02, 1.0)]; lc += [(ta_l - 0.10, 0.0), (ta_l + 0.27, 1.0)]; l_on = True
+                lg += [(ta_l - 0.40, 0.0), (ta_l - 0.02, 1.0)]; lc += [(ta_l + 0.02, 0.0), (ta_l + 0.34, 1.0)]; l_on = True
         elif k > 0:
             ta_l = max(ta + 0.08, L[-1]["t"] + 0.6)
             if l_on:
@@ -292,6 +320,8 @@ def bake(folder, log=print):
     rg.append((T1, 1.0 if r_on else 0.0)); rc.append((T1, 1.0 if r_on else 0.0)); lg.append((T1, 1.0 if l_on else 0.0)); lc.append((T1, 1.0 if l_on else 0.0))
     strong = strong_syllables(folder)
     R = enrich(R, "R", line_t, strong, T1, (P["MIC"], ), seed=11); L = enrich(L, "L", line_t, strong, T1, (M(P["POLE"]), ), seed=23)
+    rig_all = json.loads("\n".join(l.split("//")[0] for l in open(os.path.join(HERE, "data", "lin_rig.json"), encoding="utf-8").read().splitlines()))
+    nr = route_around_mic(R, 1.0, rig_all, (P["MIC"],)); nl = route_around_mic(L, -1.0, rig_all, (M(P["POLE"]),))
     A.seq("R", R); A.seq("L", L)
     for name, keys in (("R.grip", rg), ("R.close", rc), ("L.grip", lg), ("L.close", lc), ("mouth", mouth)):
         for t, v in keys: A.key(name, min(T1, max(T0, t)), v)
@@ -322,10 +352,14 @@ def bake(folder, log=print):
             A.key("head+nod", t - 0.20, V(0, 0, 0)); A.key("head+nod", t + 0.10, V(1.8, 0, 0)); A.key("head+nod", t + 0.65, V(0, 0, 0))
     tt, data = A.write(os.path.join(folder, "key.bin"))
     sq = [l for l in A.log if "SQUEEZED" in l]
+    import re as _re
+    json.dump(dict(squeezed=[float(_re.search(r"arrives ([0-9.]+)", l).group(1)) for l in sq if _re.search(r"arrives ([0-9.]+)", l)],
+                   hand_poses=len(R) + len(L)), open(os.path.join(folder, "bake_log.json"), "w"))
     with open(os.path.join(folder, "look.txt"), "w", newline="\n") as f:
         f.write("# eyes: look t kind (0 microphone, 1 lens, 2 / 3 audience left / right, 4 far, 5 down)\n")
         for t, kd in look: f.write("look %.3f %d\n" % (t, kd))
     on = sum(min(sheet[i + 1]["t"] if i + 1 < len(sheet) else dur, dur) - s["t"] for i, s in enumerate(sheet) if MOVES[s["move"]]["R"] == "MIC")
+    if nr + nl: log(f"  routed {nr + nl} hand moves around the microphone / stand")
     log(f"  body: {len(tt)} frames at 60 fps, {len(R) + len(L)} hand poses, right hand on the microphone {100 * on / max(1, dur):.0f}% of the song" + (f"; {len(sq)} squeezed changes" if sq else ""))
     return len(sq)
 

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>lin-sing studio</title>
+<style>
+:root { --bg:#0f1222; --panel:#171b31; --line:#2a3052; --ink:#e9ecf7; --mute:#97a0c4; --acc:#f2b8c6; --acc2:#8fd3ff; --ok:#9be3b0; --bad:#ff8f8f; --warn:#ffcf7a; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, "Microsoft YaHei", "PingFang SC", sans-serif; }
+header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+header h1 { font-size: 17px; margin: 0 10px 0 0; } header h1 span { color: var(--acc); }
+button, select, input { background: #20254a; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; }
+button:hover { border-color: var(--acc2); } button.primary { background: var(--acc); color: #1a1020; border-color: var(--acc); font-weight: 700; }
+button:disabled { opacity: .45; }
+#time { font-variant-numeric: tabular-nums; color: var(--mute); min-width: 120px; }
+main { display: grid; grid-template-columns: 1fr 320px; height: calc(100vh - 58px); }
+#tl { position: relative; overflow: hidden; border-right: 1px solid var(--line); }
+canvas { display: block; }
+aside { padding: 14px; overflow-y: auto; }
+aside h2 { font-size: 14px; margin: 14px 0 8px; color: var(--mute); font-weight: 600; }
+.field { display: grid; grid-template-columns: 70px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; }
+.field label { color: var(--mute); }
+#log { white-space: pre-wrap; font: 12px/1.4 ui-monospace, Consolas, monospace; background: #0b0e1c; border: 1px solid var(--line); border-radius: 8px; padding: 8px; max-height: 180px; overflow: auto; color: #c9d0ea; }
+video { width: 100%; border-radius: 8px; margin-top: 8px; background: #000; }
+.qa { font-size: 12.5px; margin: 3px 0; } .qa.f { color: var(--bad); } .qa.w { color: var(--warn); } .qa.p { color: var(--ok); }
+.hint { color: var(--mute); font-size: 12.5px; }
+kbd { background: #20254a; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; font-size: 12px; }
+@media (max-width: 860px) { main { grid-template-columns: 1fr; height: auto; } #tl { height: 380px; } aside { border-top: 1px solid var(--line); } }
+</style></head><body>
+<header>
+  <h1>lin-<span>sing</span> studio</h1>
+  <button id="play">▶ 播放</button><span id="time">0:00.0</span>
+  <button id="zin">放大</button><button id="zout">缩小</button>
+  <span style="flex:1"></span>
+  <label class="hint">情绪</label><select id="mood"><option>neutral</option><option>sad</option><option>bright</option></select>
+  <button id="save" class="primary">保存并烘焙</button>
+  <button id="prev">渲染选中段预览</button>
+  <button id="full">渲染整首</button>
+</header>
+<main>
+  <div id="tl"><canvas id="cv"></canvas></div>
+  <aside>
+    <div id="songinfo" class="hint"></div>
+    <h2>选中的动作</h2>
+    <div id="sel" class="hint">点时间轴上的动作块来选中。</div>
+    <div id="edit" style="display:none">
+      <div class="field"><label>开始</label><input id="t" type="number" step="0.05"></div>
+      <div class="field"><label>动作</label><select id="move"></select></div>
+      <div class="field"><label>表情</label><select id="face"></select></div>
+      <div class="field"><label>档位</label><select id="level"><option value="-1">无人声</option><option value="0">安静</option><option value="1">中等</option><option value="2">饱满</option></select></div>
+      <button id="del">删除这一条</button>
+    </div>
+    <h2>操作</h2>
+    <div class="hint">
+      点击：选中动作 / 跳转播放位置<br>
+      拖动动作块左边缘：调整开始时间（吸附到拍子，按住 <kbd>Alt</kbd> 不吸附）<br>
+      双击动作行：在这里拆出一条新动作<br>
+      <kbd>Shift</kbd> + 拖动：选择预览范围<br>
+      <kbd>空格</kbd> 播放 / 暂停　<kbd>Delete</kbd> 删除　<kbd>←</kbd><kbd>→</kbd> 上一条 / 下一条<br>
+      <kbd>Ctrl</kbd> + 滚轮：缩放；滚轮：左右移动
+    </div>
+    <h2>质检</h2><div id="qa" class="hint">还没有质检结果。</div>
+    <h2>任务</h2><div id="log">空闲</div>
+    <video id="vid" controls style="display:none"></video>
+  </aside>
+</main>
+<audio id="au" preload="auto"></audio>
+<script>
+const $ = s => document.querySelector(s);
+const cv = $("#cv"), ctx = cv.getContext("2d"), au = $("#au");
+let D = null, sheet = [], sel = -1, view = { t0: 0, pps: 40 }, range = null, drag = null, dirty = false;
+const ROWS = { ruler: [0, 22], wave: [22, 70], bars: [92, 20], lines: [112, 44], moves: [156, 52], faces: [208, 24], qa: [232, 18] };
+const H = 252, LEVEL_COL = { "-1": "#5b6382", "0": "#5d8fd8", "1": "#9a7be0", "2": "#e07ba3" };
+const fmt = t => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`;
+const X = t => (t - view.t0) * view.pps, T = x => view.t0 + x / view.pps;
+
+async function load() {
+  D = await (await fetch("/api/data")).json(); sheet = JSON.parse(JSON.stringify(D.choreo.sheet));
+  au.src = "/media/song.wav"; $("#mood").value = D.choreo.mood || "neutral";
+  $("#songinfo").textContent = `${D.song.name} · ${fmt(D.song.duration)} · ${Math.round(D.song.bpm)} BPM · ${D.song.lang} · ${sheet.length} 条动作`;
+  $("#move").innerHTML = D.choreo.moves.map(m => `<option value="${m}">${m}（${({"-1":"无人声","0":"安静","1":"中等","2":"饱满"})[D.move_levels[m]]}）</option>`).join("");
+  $("#face").innerHTML = `<option value="">自动</option>` + (D.choreo.faces || []).map(f => `<option>${f}</option>`).join("");
+  showQA(D.qa); resize(); view.pps = Math.max(4, (cv.width / devicePixelRatio) / 60); draw();
+}
+function resize() { const r = $("#tl").getBoundingClientRect(); cv.width = r.width * devicePixelRatio; cv.height = Math.max(H, r.height) * devicePixelRatio; cv.style.width = r.width + "px"; cv.style.height = Math.max(H, r.height) + "px"; ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); draw(); }
+function draw() {
+  if (!D) return; const W = cv.width / devicePixelRatio, t1 = T(W);
+  ctx.fillStyle = "#0f1222"; ctx.fillRect(0, 0, W, cv.height);
+  // ruler and beats
+  ctx.fillStyle = "#97a0c4"; ctx.font = "11px system-ui"; const step = view.pps > 60 ? 1 : view.pps > 20 ? 5 : 10;
+  for (let s = Math.ceil(view.t0 / step) * step; s < t1; s += step) { ctx.fillRect(X(s), 14, 1, 8); ctx.fillText(fmt(s), X(s) + 3, 11); }
+  // waveform
+  const [wy, wh] = ROWS.wave, P = D.peaks; ctx.fillStyle = "#3b4682";
+  for (let x = 0; x < W; x++) { const i = Math.floor(T(x) * P.per_s); const v = P.v[i] || 0; ctx.fillRect(x, wy + wh / 2 - v * wh / 2, 1, v * wh); }
+  // bars: loudness shading + lines
+  const [by, bh] = ROWS.bars; const tmax = Math.max(...D.bars.map(b => b.total));
+  D.bars.forEach((b, i) => { const xe = X(D.bars[i + 1] ? D.bars[i + 1].t : D.song.duration); if (xe < 0 || X(b.t) > W) return; ctx.fillStyle = `rgba(242,184,198,${0.08 + 0.5 * b.total / tmax})`; ctx.fillRect(X(b.t), by, xe - X(b.t) - 1, bh); });
+  // lyric lines
+  const [ly, lh] = ROWS.lines; ctx.font = "12px system-ui";
+  D.lines.forEach(l => { const a = X(l.t), b = X(l.end); if (b < 0 || a > W) return; ctx.fillStyle = l.score < 0.35 ? "rgba(255,207,122,.25)" : "rgba(143,211,255,.18)"; ctx.fillRect(a, ly + 4, Math.max(2, b - a), lh - 8);
+    ctx.save(); ctx.beginPath(); ctx.rect(a, ly, Math.max(2, b - a), lh); ctx.clip(); ctx.fillStyle = "#dfe6ff"; ctx.fillText(l.text, a + 3, ly + 26); ctx.restore(); });
+  // moves
+  const [my, mh] = ROWS.moves; ctx.font = "bold 12px system-ui";
+  sheet.forEach((s, i) => { const a = X(s.t), b = X(sheet[i + 1] ? sheet[i + 1].t : D.song.duration); if (b < 0 || a > W) return;
+    ctx.fillStyle = LEVEL_COL[String(s.level)] || "#666"; ctx.globalAlpha = i === sel ? 1 : 0.72; ctx.fillRect(a + 1, my + 4, Math.max(2, b - a - 2), mh - 8); ctx.globalAlpha = 1;
+    if (i === sel) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.strokeRect(a + 1, my + 4, b - a - 2, mh - 8); }
+    ctx.save(); ctx.beginPath(); ctx.rect(a, my, b - a, mh); ctx.clip(); ctx.fillStyle = "#fff"; ctx.fillText(s.move, a + 6, my + 30); ctx.restore(); });
+  // faces
+  const [fy, fh] = ROWS.faces; ctx.font = "11px system-ui";
+  sheet.forEach((s, i) => { const a = X(s.t); if (a > W || !s.face) return; ctx.fillStyle = "#c9b8ff"; ctx.fillText("☺ " + s.face, a + 4, fy + 16); });
+  // qa marks
+  if (D.qa) { const [qy] = ROWS.qa; D.qa.checks.filter(c => !c.ok).forEach(c => c.where.forEach(w => { const t = parseFloat(String(w)); if (isNaN(t)) return; ctx.fillStyle = c.severity === "fail" ? "#ff8f8f" : "#ffcf7a"; ctx.fillRect(X(t) - 2, qy + 3, 4, 12); })); }
+  // labels
+  ctx.fillStyle = "#97a0c4"; ctx.font = "11px system-ui"; [["波形", "wave"], ["小节", "bars"], ["歌词", "lines"], ["动作", "moves"], ["表情", "faces"], ["质检", "qa"]].forEach(([n, k]) => ctx.fillText(n, 4, ROWS[k][0] + 12));
+  // selection range and playhead
+  if (range) { ctx.fillStyle = "rgba(143,211,255,.12)"; ctx.fillRect(X(range[0]), 0, X(range[1]) - X(range[0]), H); }
+  ctx.fillStyle = "#f2b8c6"; ctx.fillRect(X(au.currentTime || 0), 0, 2, H);
+}
+function snap(t, alt) { if (alt) return t; let best = t, d = 0.15; for (const b of D.beats) { if (Math.abs(b - t) < d) { d = Math.abs(b - t); best = b; } } return Math.round(best * 1000) / 1000; }
+function blockAt(x, y) { const [my, mh] = ROWS.moves; if (y < my || y > my + mh) return -1; const t = T(x); for (let i = sheet.length - 1; i >= 0; i--) if (sheet[i].t <= t) return i; return -1; }
+function select(i) {
+  sel = i; const s = sheet[i]; $("#edit").style.display = s ? "" : "none"; $("#sel").style.display = s ? "none" : "";
+  if (s) { $("#t").value = s.t; $("#move").value = s.move; $("#face").value = s.face || ""; $("#level").value = s.level; }
+  draw();
+}
+function mark() { dirty = true; $("#save").textContent = "保存并烘焙 •"; draw(); }
+cv.addEventListener("mousedown", e => {
+  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  if (e.shiftKey) { drag = { kind: "range", a: T(x) }; range = [T(x), T(x)]; return; }
+  const i = blockAt(x, y);
+  if (i > 0 && Math.abs(X(sheet[i].t) - x) < 7) { drag = { kind: "edge", i }; return; }
+  if (i >= 0) select(i); else { au.currentTime = Math.max(0, T(x)); draw(); }
+});
+window.addEventListener("mousemove", e => {
+  if (!drag) { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, i = blockAt(x, y); cv.style.cursor = i > 0 && Math.abs(X(sheet[i].t) - x) < 7 ? "ew-resize" : "default"; return; }
+  const r = cv.getBoundingClientRect(), t = T(e.clientX - r.left);
+  if (drag.kind === "range") { range = [Math.min(drag.a, t), Math.max(drag.a, t)]; draw(); }
+  else { const i = drag.i, lo = sheet[i - 1].t + 1.8, hi = (sheet[i + 1] ? sheet[i + 1].t : D.song.duration) - 1.8; sheet[i].t = Math.min(hi, Math.max(lo, snap(t, e.altKey))); select(i); mark(); }
+});
+window.addEventListener("mouseup", () => { if (drag && drag.kind === "range" && range && range[1] - range[0] < 0.5) range = null; drag = null; draw(); });
+cv.addEventListener("dblclick", e => {
+  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, i = blockAt(x, y); if (i < 0) return;
+  const t = snap(T(x), e.altKey), nxt = sheet[i + 1] ? sheet[i + 1].t : D.song.duration;
+  if (t - sheet[i].t < 1.8 || nxt - t < 1.8) { log("太近了：新动作两边都要留 1.8 秒以上"); return; }
+  const same = D.choreo.moves.filter(m => D.move_levels[m] === sheet[i].level && m !== sheet[i].move);
+  sheet.splice(i + 1, 0, { t, end: nxt, move: same[0] || sheet[i].move, level: sheet[i].level }); select(i + 1); mark();
+});
+cv.addEventListener("wheel", e => { e.preventDefault(); if (e.ctrlKey) { const r = cv.getBoundingClientRect(), tm = T(e.clientX - r.left); view.pps = Math.min(400, Math.max(4, view.pps * (e.deltaY < 0 ? 1.2 : 1 / 1.2))); view.t0 = Math.max(0, tm - (e.clientX - r.left) / view.pps); } else view.t0 = Math.max(0, view.t0 + (e.deltaY + e.deltaX) / view.pps); draw(); }, { passive: false });
+$("#t").onchange = () => { if (sel <= 0) return; const lo = sheet[sel - 1].t + 1.8, hi = (sheet[sel + 1] ? sheet[sel + 1].t : D.song.duration) - 1.8; sheet[sel].t = Math.min(hi, Math.max(lo, parseFloat($("#t").value))); select(sel); mark(); };
+$("#move").onchange = () => { const m = $("#move").value; sheet[sel].move = m; sheet[sel].level = D.move_levels[m]; select(sel); mark(); };
+$("#face").onchange = () => { const f = $("#face").value; if (f) sheet[sel].face = f; else delete sheet[sel].face; mark(); };
+$("#level").onchange = () => { sheet[sel].level = parseInt($("#level").value); mark(); };
+$("#del").onclick = () => { if (sel <= 0) { log("第一条不能删"); return; } sheet.splice(sel, 1); select(sel - 1); mark(); };
+$("#mood").onchange = mark;
+window.addEventListener("keydown", e => {
+  if (["INPUT", "SELECT"].includes(document.activeElement.tagName)) return;
+  if (e.code === "Space") { e.preventDefault(); togglePlay(); }
+  if (e.key === "Delete" && sel > 0) $("#del").onclick();
+  if (e.key === "ArrowRight" && sel < sheet.length - 1) select(sel + 1);
+  if (e.key === "ArrowLeft" && sel > 0) select(sel - 1);
+});
+function togglePlay() { if (au.paused) { au.play(); $("#play").textContent = "❚❚ 暂停"; } else { au.pause(); $("#play").textContent = "▶ 播放"; } }
+$("#play").onclick = togglePlay;
+$("#zin").onclick = () => { view.pps = Math.min(400, view.pps * 1.5); draw(); }; $("#zout").onclick = () => { view.pps = Math.max(4, view.pps / 1.5); draw(); };
+function tick() { $("#time").textContent = fmt(au.currentTime || 0) + " / " + (D ? fmt(D.song.duration) : ""); if (!au.paused) { const W = cv.width / devicePixelRatio; if (X(au.currentTime) > W * 0.85) view.t0 = au.currentTime - W * 0.15 / view.pps; draw(); } requestAnimationFrame(tick); }
+function log(s) { $("#log").textContent = s; }
+function showQA(q) {
+  if (!q) return; const bad = q.checks.filter(c => !c.ok);
+  $("#qa").innerHTML = `<div class="qa ${q.passed ? "p" : "f"}">${q.passed ? "通过" : "不通过"}：${q.fails} 项不合格，${q.warnings} 项提醒</div>` +
+    bad.map(c => `<div class="qa ${c.severity === "fail" ? "f" : "w"}">${c.severity === "fail" ? "✗" : "!"} ${c.name}：${c.value}${c.where.length ? "（" + c.where.slice(0, 4).join("，") + "）" : ""}<br><span class="hint">${c.advice}</span></div>`).join("");
+}
+async function poll(after) {
+  const s = await (await fetch("/api/task")).json(); log(s.running ? `${s.name} 进行中…\n` + s.log.split("\n").slice(-12).join("\n") : (s.log.split("\n").slice(-14).join("\n") || "空闲"));
+  if (s.running) { setTimeout(() => poll(after), 1000); return; }
+  ["#save", "#prev", "#full"].forEach(b => $(b).disabled = false); if (after) after(s);
+}
+$("#save").onclick = async () => {
+  ["#save", "#prev", "#full"].forEach(b => $(b).disabled = true);
+  const r = await (await fetch("/api/choreo", { method: "POST", body: JSON.stringify({ sheet, mood: $("#mood").value, bake: true }) })).json();
+  if (r.error) { log(r.error); ["#save", "#prev", "#full"].forEach(b => $(b).disabled = false); return; }
+  dirty = false; $("#save").textContent = "保存并烘焙"; poll(async () => { const d = await (await fetch("/api/data")).json(); D.qa = d.qa; D.lines = d.lines; showQA(D.qa); draw(); });
+};
+async function render(from, to) {
+  if (dirty) { log("先“保存并烘焙”，再渲染"); return; }
+  ["#save", "#prev", "#full"].forEach(b => $(b).disabled = true);
+  await fetch("/api/render", { method: "POST", body: JSON.stringify(from == null ? {} : { from, to }) });
+  poll(s => { if (s.result && s.result.video) { const v = $("#vid"); v.style.display = ""; v.src = "/media/" + s.result.video + "?" + Date.now(); v.play(); } });
+}
+$("#prev").onclick = () => { let r = range; if (!r && sel >= 0) r = [Math.max(0, sheet[sel].t - 2), Math.min(D.song.duration, (sheet[sel + 1] ? sheet[sel + 1].t : D.song.duration) + 2)]; if (!r) { log("先 Shift+拖动 选一段，或选中一条动作"); return; } render(Math.round(r[0] * 10) / 10, Math.round(r[1] * 10) / 10); };
+$("#full").onclick = () => render(null, null);
+window.addEventListener("resize", resize); window.addEventListener("beforeunload", e => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+load(); tick();
+</script></body></html>

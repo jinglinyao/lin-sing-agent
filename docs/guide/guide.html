@@ -109,11 +109,11 @@ td.y { color: var(--ok); } td.n { color: #c3b6bf; }
 <h2><span class="n">04</span>如何使用</h2>
 <p class="lead">需要 Python 3.10+、ffmpeg 和 Unity 6；有 NVIDIA 显卡更快。</p>
 <div class="steps">
-  <div class="step"><div class="k"></div><div class="b"><b>安装依赖</b><p>先按你的显卡装好 PyTorch，再装其余依赖。</p><span class="cmd">pip install -r pipeline/requirements.txt</span></div></div>
+  <div class="step"><div class="k"></div><div class="b"><b>一键安装</b><p>Windows 双击 install.bat；macOS / Linux 运行 install.sh。它会建好环境、装好依赖、下载模型并自检。</p><span class="cmd">python linsing.py doctor</span></div></div>
   <div class="step"><div class="k"></div><div class="b"><b>第一次打开工程</b><p>用 Unity 6 打开 unity/，点菜单 LinSing / First-time Setup。它会重新导入 lin 并量好她的尺寸。</p></div></div>
   <div class="step"><div class="k"></div><div class="b"><b>换上你的歌，附上歌词</b><p>把歌词发给智能体，或者存成 txt：一行一句；要显示译文就写成“原文 | 译文”。没有歌词也行，程序会自己听，但准确度会低一些。</p><span class="cmd">python linsing.py make 我的歌.mp3 --lyrics 歌词.txt --mood sad</span></div></div>
   <div class="step"><div class="k"></div><div class="b"><b>实时预览</b><p>在 Unity 里点 LinSing / Load Song Folder，选中 songs/我的歌，再点 Play，就能带声音实时看。</p></div></div>
-  <div class="step"><div class="k"></div><div class="b"><b>（可选）让智能体改编舞</b><p>比如说：“副歌第二句双手打开，最后一句俯身贴麦。”它会改 choreo.json 并重新烘焙。</p><span class="cmd">python linsing.py bake ../songs/我的歌</span></div></div>
+  <div class="step"><div class="k"></div><div class="b"><b>（可选）改编舞</b><p>可以对智能体说：“副歌第二句双手打开，最后一句俯身贴麦。”也可以打开网页编辑器，用鼠标自己改。改完会自动烘焙并质检。</p><span class="cmd">python linsing.py studio ../songs/我的歌</span></div></div>
   <div class="step"><div class="k"></div><div class="b"><b>先看 30 秒预览，再出整首</b><p>Unity 会自己打开、渲染、关闭，最后合上声音并烧好字幕。</p><span class="cmd">python linsing.py render ../songs/我的歌 --from 60 --to 90
 python linsing.py render ../songs/我的歌</span></div></div>
 </div>
@@ -143,7 +143,16 @@ python linsing.py render ../songs/我的歌</span></div></div>
 <div class="ds"><div class="h"><b>⑨ 字幕</b><code>subs.ass / subs.json</code></div><div class="r"><span>现在用</span><div>按音节时间淡入淡出，原文下面带译文；ffmpeg 烧进画面，字体 Noto Sans SC</div><span>可以换成</span><div class="sw">改 subtitles.py 里的 ASS 样式，或者导出 srt 交给剪辑软件</div></div></div>
 <div class="ds"><div class="h"><b>⑩ 播放引擎</b><code>key.bin · float32 × 57 通道</code></div><div class="r"><span>现在用</span><div>Unity 6 + URP + UniVRM，只负责播放</div><span>可以换成</span><div class="sw">Blender、UE、three.js：按 LAYOUT 写一个播放器读 key.bin 即可</div></div></div>
 
-<h2><span class="n">07</span>打包内容</h2>
+<h2><span class="n">07</span>好用、快、能反复改</h2>
+<p class="lead">从装好到改好，每一步都有工具，而且都能交给智能体。</p>
+<div class="grid2">
+  <div class="card"><div class="ic">INSTALL</div><h3>一键安装和自检</h3><p>双击 install.bat：建环境、装依赖、下载模型。doctor 逐项检查 Python、ffmpeg、显卡、模型和 Unity，缺什么就告诉你怎么补。</p></div>
+  <div class="card"><div class="ic">QA</div><h3>自动质检报告</h3><p>检查动作是否急、握麦是否太多、歌词是否对准、字幕和镜头是否有问题；--deep 还会让 Unity 逐帧扫描真实网格穿模。每一项都附时间点和改法。</p></div>
+  <div class="card"><div class="ic">STUDIO</div><h3>网页时间轴编辑器</h3><p>波形、小节、歌词、动作块、表情、质检标记排在同一条时间轴上。可以拖动、换动作、换表情，保存后自动烘焙，选一段就能渲染预览。</p></div>
+  <div class="card"><div class="ic">RENDER</div><h3>快 3.5 倍，只重渲改过的段</h3><p>每帧直接送进显卡编码，3 分 35 秒的歌 1080p 整首约 1.5 分钟。按 20 秒分段缓存，改一处动作只重渲受影响的段，约 50 秒。</p></div>
+</div>
+
+<h2><span class="n">08</span>打包内容</h2>
 <div class="pack">
   <div class="card"><h3>lin</h3><p>VRoid 制作的 VRM 1.0 模型。作者允许再分发、修改和商用。</p></div>
   <div class="card"><h3>舞台与立麦</h3><p>代码生成的预制体，话筒高度已按 lin 的嘴实测摆好。</p></div>

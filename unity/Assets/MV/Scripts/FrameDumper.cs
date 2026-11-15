@@ -244,6 +244,64 @@ public class FrameDumper : MonoBehaviour
     public static int Written;
     public static bool Done;
 
+    // ------------------------------------------------------------------ lin-sing: chunked render straight into ffmpeg (no image files)
+    [Header("lin-sing chunked render: \"f0|f1|out.mp4\" ranges (frame numbers on the song's grid), separated by ';'")]
+    [TextArea] public string ranges = "";
+    public string ffmpegPath = "ffmpeg";
+    public string encoder = "h264_nvenc";      // or libx264 when the GPU encoder is missing
+    public float preroll = 1.5f;               // seconds of real motion before each range (not written): hair and skirt arrive as in one long take
+
+    System.Diagnostics.Process StartEncoder(string outPath)
+    {
+        string enc = encoder == "h264_nvenc" ? "-c:v h264_nvenc -preset p5 -rc vbr -cq 17 -b:v 0" : "-c:v libx264 -preset veryfast -crf 16";
+        var psi = new System.Diagnostics.ProcessStartInfo(ffmpegPath,
+            $"-y -v error -f rawvideo -pix_fmt rgb24 -s {width}x{height} -r {fps} -i - -vf vflip {enc} -pix_fmt yuv420p \"{outPath}\"")
+        { UseShellExecute = false, RedirectStandardInput = true, CreateNoWindow = true };
+        return System.Diagnostics.Process.Start(psi);
+    }
+
+    IEnumerator RenderRanges()
+    {
+        Time.captureFramerate = fps; driver.usePreviewTime = true;
+        if (driver.audioSource != null) driver.audioSource.mute = true;
+        var rt = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32) { antiAliasing = 4 }; cam.targetTexture = rt;
+        var buf = new byte[width * height * 3]; var timing = new System.Text.StringBuilder("f0 f1 seconds frames_per_second\n");
+        Directory.CreateDirectory(outDir);
+        foreach (var spec in ranges.Split(new[] { ';', '\n' }, System.StringSplitOptions.RemoveEmptyEntries))
+        {
+            var q = spec.Trim().Split('|'); if (q.Length < 3) continue;
+            int f0 = int.Parse(q[0], CultureInfo.InvariantCulture), f1 = int.Parse(q[1], CultureInfo.InvariantCulture); string outPath = q[2];
+            var p = StartEncoder(outPath); var stdin = p.StandardInput.BaseStream;
+            int pre = Mathf.RoundToInt(Mathf.Max(preroll, warmupFrames / (float)fps) * fps);
+            var pending = new Queue<UnityEngine.Rendering.AsyncGPUReadbackRequest>(); float clock = Time.realtimeSinceStartup;
+            void Flush(int keep)
+            {
+                while (pending.Count > keep)
+                {
+                    var r = pending.Dequeue(); r.WaitForCompletion();
+                    if (r.hasError) { Debug.LogError("[LinSing] GPU readback failed"); continue; }
+                    r.GetData<byte>().CopyTo(buf); stdin.Write(buf, 0, buf.Length);
+                }
+            }
+            for (int f = f0 - pre; f < f1; f++)
+            {
+                float t = Mathf.Max(0f, f / (float)fps);
+                driver.previewTime = t;
+                StepCamera(t, f == f0 - pre, 1f / fps);
+                yield return new WaitForEndOfFrame();
+                if (f < f0) continue;
+                pending.Enqueue(UnityEngine.Rendering.AsyncGPUReadback.Request(rt, 0, TextureFormat.RGB24));
+                Flush(2); Written++;
+            }
+            Flush(0); stdin.Flush(); stdin.Close(); p.WaitForExit();
+            float sec = Time.realtimeSinceStartup - clock;
+            timing.AppendLine($"{f0} {f1} {sec:F1} {(f1 - f0) / Mathf.Max(0.01f, sec):F1}");
+            Debug.Log($"[LinSing] range {f0}-{f1} -> {outPath} ({sec:F0} s)");
+        }
+        File.WriteAllText(Path.Combine(outDir, "render_timing.txt"), timing.ToString());
+        cam.targetTexture = null;
+    }
+
     [Header("Live: play in real time in the Game view (audio is the clock) instead of writing frames")]
     public bool live;
     public bool liveLoop = true;
@@ -328,6 +386,14 @@ public class FrameDumper : MonoBehaviour
         }
         headS = head.position; show = camKeys.Count > 0;
         if (live) { yield return Live(); yield break; }
+        if (!string.IsNullOrEmpty(ranges))
+        {
+            yield return RenderRanges(); Done = true;
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#endif
+            yield break;
+        }
 
         Time.captureFramerate = fps;
         driver.usePreviewTime = true;

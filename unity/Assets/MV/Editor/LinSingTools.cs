@@ -31,7 +31,8 @@ public static class LinSingTools
             SessionState.SetBool(KeyRender, false);
             var folder = SessionState.GetString(KeyFolder, "");
             try { SetLive(); } catch (Exception e) { Debug.LogError(e); }
-            int n = Directory.Exists(Path.Combine(folder, "frames")) ? Directory.GetFiles(Path.Combine(folder, "frames"), "*.jpg").Length : 0;
+            int n = FrameDumper.Written;
+            var fdx = UnityEngine.Object.FindFirstObjectByType<FrameDumper>(); if (fdx != null) { fdx.ranges = ""; EditorUtility.SetDirty(fdx); }
             File.WriteAllText(Path.Combine(folder, "render_done.txt"), n + " frames\n");
             Debug.Log("[LinSing] render finished: " + n + " frames in " + folder);
             if (Environment.GetCommandLineArgs() is var a && Array.IndexOf(a, "-executeMethod") >= 0) EditorApplication.Exit(0);
@@ -78,6 +79,20 @@ public static class LinSingTools
         dir = Path.GetFullPath(dir);
         Debug.Log("[LinSing] " + LoadSong(dir));
         var ci = System.Globalization.CultureInfo.InvariantCulture;
+        var rf = Arg("-rangesFile");
+        if (rf != null)
+        {
+            // chunked render straight into ffmpeg (the pipeline decides which chunks need rendering)
+            var d = UnityEngine.Object.FindFirstObjectByType<SingDriver>(); var fd = UnityEngine.Object.FindFirstObjectByType<FrameDumper>();
+            int h = int.Parse(Arg("-height", "1080"));
+            fd.live = false; fd.stage = true; fd.fps = int.Parse(Arg("-fps", "30")); fd.height = h; fd.width = h * 16 / 9; d.mouth = 1f;
+            fd.ranges = File.ReadAllText(rf); fd.ffmpegPath = Arg("-ffmpeg", "ffmpeg"); fd.encoder = Arg("-encoder", "h264_nvenc");
+            fd.outDir = Path.Combine(dir, "chunks").Replace('\\', '/'); fd.startTime = 0f; fd.duration = d.audioSource.clip.length;
+            EditorUtility.SetDirty(fd); EditorUtility.SetDirty(d);
+            EditorSceneManager.MarkSceneDirty(fd.gameObject.scene); EditorSceneManager.SaveScene(fd.gameObject.scene);
+            SessionState.SetBool(KeyRender, true); SessionState.SetString(KeyFolder, dir);
+            EditorApplication.EnterPlaymode(); return;
+        }
         StartRender(dir, int.Parse(Arg("-fps", "30")), int.Parse(Arg("-height", "1080")), float.Parse(Arg("-from", "0"), ci), float.Parse(Arg("-to", "-1"), ci));
     }
 
@@ -107,6 +122,21 @@ public static class LinSingTools
         var dst = Path.GetFullPath(Path.Combine(Application.dataPath, "../../pipeline/lin_sing/data/lin_rig.json"));
         Directory.CreateDirectory(Path.GetDirectoryName(dst)); File.Copy("Capture/rig_sheet.json", dst, true);
         Debug.Log("[LinSing] rig -> " + dst);
+    }
+
+    /// <summary>Deep QA (python linsing.py qa --deep): the song posed frame by frame without rendering - the final joints after all solving
+    /// (qa_probe.csv, 60 fps) and the real meshes scanned for arms in the body / hands in the other arm / hands in the microphone
+    /// (qa_penetration.csv, every -step seconds).</summary>
+    public static void BatchQA()
+    {
+        var dir = Arg("-song"); if (dir == null) { Debug.LogError("[LinSing] -song <folder> missing"); EditorApplication.Exit(2); return; }
+        dir = Path.GetFullPath(dir); Debug.Log("[LinSing] " + LoadSong(dir));
+        var ci = System.Globalization.CultureInfo.InvariantCulture; float step = float.Parse(Arg("-step", "0.1"), ci);
+        var d = UnityEngine.Object.FindFirstObjectByType<SingDriver>(); float len = d.audioSource.clip.length;
+        Directory.CreateDirectory("Capture");
+        Debug.Log("[LinSing] " + MvSetup.Probe(len)); File.Copy("Capture/probe.csv", Path.Combine(dir, "qa_probe.csv"), true);
+        Debug.Log("[LinSing] " + MvSetup.PenetrationScan(0f, len, step)); File.Copy("Capture/penetration.csv", Path.Combine(dir, "qa_penetration.csv"), true);
+        Debug.Log("[LinSing] qa scans written to " + dir);
     }
 
     // ------------------------------------------------------------------ the work
@@ -158,7 +188,7 @@ public static class LinSingTools
     {
         var d = UnityEngine.Object.FindFirstObjectByType<SingDriver>(); var fd = UnityEngine.Object.FindFirstObjectByType<FrameDumper>();
         var frames = Path.Combine(folder, "frames"); if (Directory.Exists(frames)) Directory.Delete(frames, true);
-        fd.live = false; fd.stage = true; fd.outDir = frames.Replace('\\', '/'); fd.fps = fps; fd.height = height; fd.width = height * 16 / 9;
+        fd.live = false; fd.stage = true; fd.ranges = ""; fd.outDir = frames.Replace('\\', '/'); fd.fps = fps; fd.height = height; fd.width = height * 16 / 9;
         float len = d.audioSource.clip.length; from = Mathf.Clamp(from, 0f, len - 0.5f); if (to <= from) to = len;
         fd.startTime = from; fd.duration = Mathf.Min(to, len) - from + 0.05f; d.mouth = 1f;
         EditorUtility.SetDirty(fd); EditorUtility.SetDirty(d);
