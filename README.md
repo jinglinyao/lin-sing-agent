@@ -46,6 +46,10 @@
 | 画面 | 3D 卡通渲染，舞台和立麦 | 可以是写实 |
 
 ## 快速开始
+```bash
+git clone https://github.com/jinglinyao/lin-sing-agent.git
+cd lin-sing-agent
+```
 0. 最省事的方式：Windows 双击 `install.bat`，macOS / Linux 运行 `bash install.sh`。它会建好环境、装好依赖、下载模型并自检。装完后跳到第 3 步。
 1. 安装依赖：
    - Python 3.10+、ffmpeg。
