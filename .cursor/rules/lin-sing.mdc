@@ -1,0 +1,5 @@
+---
+description: lin-sing project rules
+alwaysApply: true
+---
+Read AGENTS.md at the repo root first; drive the project through pipeline/linsing.py or the MCP server pipeline/mcp_server.py.

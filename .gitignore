@@ -1,0 +1,16 @@
+songs/*
+!songs/README.md
+unity/Library/
+unity/Temp/
+unity/Logs/
+unity/UserSettings/
+unity/obj/
+unity/Capture/
+unity/Assets/MV/Songs/
+unity/Assets/MV/Songs.meta
+unity/*.csproj
+unity/*.sln
+*.log
+__pycache__/
+*.pyc
+docs/guide/*.ttf

@@ -1,0 +1,115 @@
+[
+ {
+  "type": "function",
+  "function": {
+   "name": "linsing_check",
+   "description": "Check an audio file's length for lin-sing (max 10 minutes; over 5 minutes it works but may make the computer stutter).",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "audio": {
+      "type": "string",
+      "description": "path to the audio file"
+     }
+    },
+    "required": [
+     "audio"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "linsing_make",
+   "description": "Make lin sing a song: separates the voice, finds the lyrics and every syllable, builds the face track, analyses the music and writes an automatic choreography and camera. Takes minutes. Returns the song folder.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "audio": {
+      "type": "string"
+     },
+     "lyrics": {
+      "type": "string",
+      "description": "optional lyrics file (.lrc with times or plain .txt)"
+     },
+     "lang": {
+      "type": "string",
+      "enum": [
+       "ja",
+       "zh",
+       "en"
+      ]
+     },
+     "name": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "audio"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "linsing_get_choreo",
+   "description": "Read the dope sheet of a song folder: a list of {t, end, move, level} and the moves that exist.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "folder": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "folder"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "linsing_set_choreo",
+   "description": "Replace the dope sheet (list of {t, end, move, level}) of a song folder and re-bake body, eyes and camera.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "folder": {
+      "type": "string"
+     },
+     "sheet": {
+      "type": "array",
+      "items": {
+       "type": "object"
+      }
+     }
+    },
+    "required": [
+     "folder",
+     "sheet"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "linsing_render",
+   "description": "Render the song folder with Unity into an mp4 (the Unity editor opens and closes by itself).",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "folder": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "folder"
+    ]
+   }
+  }
+ }
+]

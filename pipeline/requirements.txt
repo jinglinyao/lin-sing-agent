@@ -1,0 +1,11 @@
+# torch / torchaudio: install the build for your GPU first (https://pytorch.org), e.g. CUDA 12.8; torchaudio >= 2.1 has MMS_FA
+torch
+torchaudio
+demucs
+faster-whisper
+librosa
+soundfile
+scipy
+numpy
+pykakasi
+pypinyin

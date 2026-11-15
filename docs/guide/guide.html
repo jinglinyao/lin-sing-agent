@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>lin-sing guide</title>
+<style>
+@font-face { font-family: "NS"; src: url("NotoSansSC_wght_.ttf"); font-weight: 100 900; }
+:root { --bg:#0d1020; --panel:#161a30; --line:#2a3052; --ink:#eef0f8; --mute:#9aa3c7; --acc:#f2b8c6; --acc2:#8fd3ff; --warn:#ffcf7a; --ok:#9be3b0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { width: 1080px; background: var(--bg); color: var(--ink); font-family: "NS", sans-serif; font-weight: 400; font-size: 22px; line-height: 1.6; }
+.wrap { padding: 0 56px 64px; }
+.hero { position: relative; height: 760px; overflow: hidden; }
+.hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; }
+.hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(13,16,32,0) 40%, rgba(13,16,32,.85) 78%, var(--bg) 100%); }
+.hero .t { position: absolute; left: 56px; right: 56px; bottom: 40px; z-index: 2; }
+.hero h1 { font-size: 92px; font-weight: 900; letter-spacing: 2px; line-height: 1.05; }
+.hero h1 span { color: var(--acc); }
+.hero p { font-size: 30px; font-weight: 500; color: #dfe3f5; margin-top: 14px; }
+.tag { display: inline-block; font-size: 19px; padding: 4px 14px; border: 1px solid var(--line); border-radius: 99px; color: var(--mute); margin: 18px 8px 0 0; background: rgba(22,26,48,.8); }
+h2 { font-size: 44px; font-weight: 900; margin: 76px 0 8px; display: flex; align-items: center; gap: 18px; }
+h2 .n { font-size: 22px; font-weight: 700; color: var(--bg); background: var(--acc); border-radius: 10px; padding: 2px 12px; }
+.lead { color: var(--mute); font-size: 22px; margin-bottom: 26px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 24px 26px; }
+.card h3 { font-size: 27px; font-weight: 800; margin-bottom: 6px; }
+.card p { color: #c9cee6; font-size: 21px; }
+.card .ic { font-size: 18px; font-weight: 700; color: var(--acc2); letter-spacing: 2px; }
+.flow { position: relative; padding-left: 0; }
+.st { display: grid; grid-template-columns: 74px 1fr 250px; gap: 18px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; margin-bottom: 12px; position: relative; }
+.st + .st::before { content: ""; position: absolute; left: 56px; top: -13px; width: 2px; height: 13px; background: var(--acc); }
+.st .k { width: 60px; height: 60px; border-radius: 50%; background: #23284a; border: 2px solid var(--acc); display: grid; place-items: center; font-weight: 900; font-size: 28px; color: var(--acc); }
+.st b { font-size: 25px; font-weight: 800; }
+.st small { display: block; color: var(--mute); font-size: 19px; line-height: 1.45; margin-top: 2px; }
+.st code, code { font-family: "NS", monospace; font-size: 18px; background: #0b0e1c; border: 1px solid var(--line); color: var(--acc2); border-radius: 8px; padding: 3px 10px; }
+.st .f { text-align: right; }
+.agent { margin: 22px 0 0; background: linear-gradient(90deg, rgba(242,184,198,.12), rgba(143,211,255,.10)); border: 1px solid var(--line); border-radius: 18px; padding: 22px 26px; font-size: 21px; }
+.agent b { color: var(--acc); }
+table { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; font-size: 21px; }
+th, td { padding: 15px 18px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: #1d2242; font-weight: 800; font-size: 21px; }
+tr:last-child td { border-bottom: 0; }
+td:first-child { color: var(--mute); font-weight: 700; width: 150px; }
+td.y { color: var(--ok); } td.n { color: #c3b6bf; }
+.steps { counter-reset: s; }
+.step { display: grid; grid-template-columns: 64px 1fr; gap: 16px; margin-bottom: 16px; }
+.step .k { counter-increment: s; width: 56px; height: 56px; border-radius: 14px; background: var(--acc2); color: var(--bg); font-weight: 900; font-size: 28px; display: grid; place-items: center; }
+.step .k::before { content: counter(s); }
+.step .b { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; }
+.step .b b { font-size: 24px; } .step .b p { color: #c9cee6; font-size: 20px; margin-top: 6px; }
+.cmd { display: block; margin-top: 10px; font-family: "NS", monospace; font-size: 19px; background: #0b0e1c; border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; color: var(--acc2); white-space: pre; }
+.warn { margin-top: 18px; background: rgba(255,207,122,.10); border: 2px solid var(--warn); border-radius: 18px; padding: 22px 26px; }
+.warn h3 { color: var(--warn); font-size: 28px; font-weight: 900; margin-bottom: 6px; }
+.warn p { font-size: 21px; }
+.ds { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 22px; margin-bottom: 12px; }
+.ds .h { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ds .h b { font-size: 25px; font-weight: 800; } .ds .h code { white-space: nowrap; }
+.ds .r { display: grid; grid-template-columns: 112px 1fr; gap: 6px 14px; margin-top: 10px; font-size: 20px; }
+.ds .r span { color: var(--mute); font-weight: 700; } .ds .r div { color: #d6daee; }
+.ds .r .sw { color: var(--ok); }
+.pack { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.pack .card { padding: 20px; } .pack .card h3 { font-size: 23px; } .pack .card p { font-size: 18px; }
+.foot { margin-top: 70px; padding-top: 26px; border-top: 1px solid var(--line); color: var(--mute); font-size: 19px; display: flex; justify-content: space-between; }
+</style></head><body>
+<div class="hero"><img src="hero.jpg">
+  <div class="t">
+    <h1>lin-<span>sing</span></h1>
+    <p>换一首歌，lin 就能对着口型、踩着节拍把它唱出来。<br>智能体驱动，全程本地，开源免费。</p>
+    <span class="tag">Claude</span><span class="tag">ChatGPT / Codex</span><span class="tag">DeepSeek</span><span class="tag">Trae</span><span class="tag">Cursor</span><span class="tag">Unity 6 · VRM</span>
+  </div>
+</div>
+<div class="wrap">
+
+<h2><span class="n">01</span>我们要解决的问题</h2>
+<p class="lead">想让一个虚拟角色唱完一整首歌，现在常见的几条路都有硬伤。</p>
+<div class="grid2">
+  <div class="card"><div class="ic">COST</div><h3>按秒收费，越改越贵</h3><p>付费 AI 数字人和视频生成按秒、按次计费。一首四分钟的歌反复生成几遍，就是一笔不小的开销。</p></div>
+  <div class="card"><div class="ic">CONTROL</div><h3>生成完就改不了</h3><p>结果是一段成品视频。手势不对、表情不对，只能整段重新抽卡，没办法只改一句。</p></div>
+  <div class="card"><div class="ic">LIP-SYNC</div><h3>口型对不上唱歌</h3><p>“说话”数字人处理不好拖长音、换气、嘶吼和假声，嘴总是比歌声早一点或晚一点。</p></div>
+  <div class="card"><div class="ic">MUSIC</div><h3>动作不懂音乐</h3><p>动作不落在拍子和小节上，副歌和主歌一个样，看起来像在念稿，不像在演唱。</p></div>
+</div>
+
+<h2><span class="n">02</span>工作原理</h2>
+<p class="lead">九步流水线，每一步只产出一个文件。任何一步都能单独重做或替换。</p>
+<div class="flow">
+  <div class="st"><div class="k">1</div><div><b>检查与规范化</b><small>最长 10 分钟；超过 5 分钟会提示可能卡顿。统一转成 44.1 kHz WAV</small></div><div class="f"><code>song.wav</code></div></div>
+  <div class="st"><div class="k">2</div><div><b>人声 / 伴奏分离</b><small>Demucs：口型只听人声，律动只听伴奏</small></div><div class="f"><code>vocals / no_vocals</code></div></div>
+  <div class="st"><div class="k">3</div><div><b>歌词分句</b><small>可以用你提供的 LRC 或纯文本歌词，也可以让 Whisper 逐段去听（顺带过滤幻觉句）</small></div><div class="f"><code>lines.json</code></div></div>
+  <div class="st"><div class="k">4</div><div><b>音节强制对齐</b><small>日语转假名、中文转拼音、英语按元音切，再用 MMS_FA 对到每个音节</small></div><div class="f"><code>morae.json</code></div></div>
+  <div class="st"><div class="k">5</div><div><b>读懂音乐</b><small>速度、拍点、小节线，以及每小节伴奏的高、中、低频响度</small></div><div class="f"><code>structure.json</code></div></div>
+  <div class="st"><div class="k">6</div><div><b>面部轨道</b><small>元音口型、辅音闭唇、眨眼、长音闭眼、视线；嘴提前 67 毫秒</small></div><div class="f"><code>face.json</code></div></div>
+  <div class="st"><div class="k">7</div><div><b>自动编舞 + 烘焙</b><small>按乐句和强弱选动作；手的路线走弧线，起得快、落得缓，带回弹和呼吸</small></div><div class="f"><code>choreo.json → key.bin</code></div></div>
+  <div class="st"><div class="k">8</div><div><b>自动运镜</b><small>一台摄像机沿小节线连续移动，段落变化时两拍叠化，不用硬切</small></div><div class="f"><code>show.txt</code></div></div>
+  <div class="st"><div class="k">9</div><div><b>Unity 播放 / 渲染</b><small>Unity 只负责播放烘好的数据：实时预览带声音，渲染出 mp4</small></div><div class="f"><code>song.mp4</code></div></div>
+</div>
+<div class="agent"><b>智能体在哪里？</b>管线本身不需要大模型，一条命令就能跑完。智能体负责三件事：一是调用管线；二是读懂歌词情绪，改写编舞表（比如“这句唱‘我哭了’，要双拳抵胸”）；三是按清单验收，如实汇报。</div>
+
+<h2><span class="n">03</span>对比付费 AI 数字人</h2>
+<p class="lead">不是要取代写实数字人，而是让“角色唱歌”这件事便宜、可控、懂音乐。</p>
+<table>
+  <tr><th></th><th>lin-sing</th><th>付费 AI 数字人 / 视频生成</th></tr>
+  <tr><td>费用</td><td class="y">免费，用本地显卡</td><td class="n">按秒或按次计费</td></tr>
+  <tr><td>能不能改</td><td class="y">编舞表的每一条都能改，几秒重烘</td><td class="n">只能整段重新生成</td></tr>
+  <tr><td>口型</td><td class="y">逐音节对齐，专门处理唱歌的长音和闭唇</td><td class="n">多为说话口型</td></tr>
+  <tr><td>音乐感</td><td class="y">动作落在拍子和小节上，主歌、副歌分档</td><td class="n">动作和音乐基本无关</td></tr>
+  <tr><td>角色一致</td><td class="y">同一个 3D 模型，每一帧都是她</td><td class="n">换个镜头，脸可能就变了</td></tr>
+  <tr><td>时长</td><td class="y">一次最长 10 分钟</td><td class="n">常见单段几秒到一分钟</td></tr>
+  <tr><td>隐私</td><td class="y">歌曲不出本机</td><td class="n">需要上传</td></tr>
+  <tr><td>画面</td><td>3D 卡通渲染、舞台和立麦</td><td>可以是写实风格</td></tr>
+</table>
+
+<h2><span class="n">04</span>如何使用</h2>
+<p class="lead">需要 Python 3.10+、ffmpeg 和 Unity 6；有 NVIDIA 显卡更快。</p>
+<div class="steps">
+  <div class="step"><div class="k"></div><div class="b"><b>安装依赖</b><p>先按你的显卡装好 PyTorch，再装其余依赖。</p><span class="cmd">pip install -r pipeline/requirements.txt</span></div></div>
+  <div class="step"><div class="k"></div><div class="b"><b>第一次打开工程</b><p>用 Unity 6 打开 unity/，点菜单 LinSing / First-time Setup。它会重新导入 lin 并量好她的尺寸。</p></div></div>
+  <div class="step"><div class="k"></div><div class="b"><b>换上你的歌</b><p>有歌词就附上，LRC 或纯文本都行；没有也可以，程序会自己听。</p><span class="cmd">python linsing.py make 我的歌.mp3 --lyrics 歌词.lrc</span></div></div>
+  <div class="step"><div class="k"></div><div class="b"><b>实时预览</b><p>在 Unity 里点 LinSing / Load Song Folder，选中 songs/我的歌，再点 Play，就能带声音实时看。</p></div></div>
+  <div class="step"><div class="k"></div><div class="b"><b>（可选）让智能体改编舞</b><p>比如说：“副歌第二句双手打开，最后一句俯身贴麦。”它会改 choreo.json 并重新烘焙。</p><span class="cmd">python linsing.py bake ../songs/我的歌</span></div></div>
+  <div class="step"><div class="k"></div><div class="b"><b>渲染成视频</b><p>Unity 会自己打开、渲染、关闭，最后合上声音。</p><span class="cmd">python linsing.py render ../songs/我的歌</span></div></div>
+</div>
+<div class="warn"><h3>⚠ 关于音频长度</h3><p>只支持 <b>10 分钟以内</b>的音频，超过会被拒绝。<br>一次输入 <b>5 分钟以上</b>的音频，电脑可能会卡顿：人声分离、音节对齐、动作烘焙的耗时和显存都随长度增长。程序能跑完，只是会慢；也可以先把歌切成几段分别处理。</p></div>
+
+<h2><span class="n">05</span>接入各家智能体</h2>
+<p class="lead">一份说明书，三种接法：AGENTS.md（读说明）、MCP（调工具）、函数调用（只有 API 时）。</p>
+<table>
+  <tr><th>智能体</th><th>怎么接</th></tr>
+  <tr><td>Claude</td><td>CLAUDE.md 指向 AGENTS.md；也可以注册 MCP 服务 <code>python pipeline/mcp_server.py</code></td></tr>
+  <tr><td>ChatGPT / Codex</td><td>直接读 AGENTS.md；支持 MCP 的客户端注册同一个服务；只有 API 时用 agent_tools.json 做函数调用</td></tr>
+  <tr><td>DeepSeek</td><td>放进任何能读 AGENTS.md 或接 MCP 的工具里用；直接调 API 时同样用 agent_tools.json</td></tr>
+  <tr><td>Trae</td><td>.trae/rules/project_rules.md 指向 AGENTS.md，再在 Trae 里添加 MCP 服务</td></tr>
+  <tr><td>Cursor / Copilot</td><td>.cursor/rules/ 和 .github/copilot-instructions.md</td></tr>
+</table>
+<p class="lead" style="margin-top:14px">MCP 工具：linsing_check · linsing_make · linsing_get_choreo · linsing_set_choreo · linsing_render</p>
+
+<h2><span class="n">06</span>设计步骤：读懂了就能换模型</h2>
+<p class="lead">每一步都有固定的“接口文件”。换工具时，只要新工具产出同样格式的文件，后面的步骤完全不用改。</p>
+<div class="ds"><div class="h"><b>② 人声分离</b><code>vocals.wav / no_vocals.wav</code></div><div class="r"><span>现在用</span><div>Demucs htdemucs（MIT）</div><span>可以换成</span><div class="sw">UVR / MDX-Net、Spleeter、云端分离 API</div></div></div>
+<div class="ds"><div class="h"><b>③ 歌词识别</b><code>lines.json · {t, end, text}</code></div><div class="r"><span>现在用</span><div>faster-whisper large-v3，按人声区间逐段识别，过滤幻觉句</div><span>可以换成</span><div class="sw">SenseVoice、Paraformer、云端 ASR，或者直接手写 LRC</div></div></div>
+<div class="ds"><div class="h"><b>④ 音节对齐</b><code>morae.json · [辅音, 元音, 起, 元音起, 止, 分]</code></div><div class="r"><span>现在用</span><div>MMS_FA（仅限非商用），每个窗口不超过 30 秒，低分句子再单独重对一遍</div><span>可以换成</span><div class="sw">Montreal Forced Aligner、WhisperX、NeMo（商用请换掉 MMS_FA）</div><span>加新语言</span><div>写一个 units_xx(text)，返回 (字母, 辅音, 元音, 元音位置)，登记到 UNITS</div></div></div>
+<div class="ds"><div class="h"><b>⑤ 音乐结构</b><code>structure.json · beats / bars</code></div><div class="r"><span>现在用</span><div>librosa：节拍、4/4 拍小节线、分频段响度</div><span>可以换成</span><div class="sw">madmom、BeatNet、All-In-One（能分出主歌和副歌段落）</div></div></div>
+<div class="ds"><div class="h"><b>⑥ 面部轨道</b><code>face.json · 60 fps</code></div><div class="r"><span>现在用</span><div>VRoid 自带的 A I U E O 形变 + 辅音规则 + 眨眼和视线</div><span>换角色</span><div class="sw">VRoid 导出的模型可以直接用；其它模型在 make_face.py 的 VOWEL / CONS 里改成自己的形变名</div></div></div>
+<div class="ds"><div class="h"><b>⑦ 编舞与烘焙</b><code>choreo.json → key.bin</code></div><div class="r"><span>现在用</span><div>规则编舞（乐句 × 强弱 × 不重复）+ 手 K 风格的过渡函数</div><span>可以换成</span><div class="sw">让大模型直接写 choreo.json；或者接音乐驱动动作模型（EDGE 等），把输出重定向成同样的 57 个通道</div><span>换角色</span><div>Unity 菜单 LinSing / Measure Rig，重新量握麦点和扶杆点</div></div></div>
+<div class="ds"><div class="h"><b>⑧ 运镜</b><code>show.txt · cam2 / xfade / beat</code></div><div class="r"><span>现在用</span><div>按强弱分档选景别，关键帧落在小节线上，段落之间两拍叠化</div><span>可以换成</span><div class="sw">手写镜头表，或者让智能体按歌词写镜头</div></div></div>
+<div class="ds"><div class="h"><b>⑨ 播放引擎</b><code>key.bin · float32 × 57 通道</code></div><div class="r"><span>现在用</span><div>Unity 6 + URP + UniVRM，只负责播放</div><span>可以换成</span><div class="sw">Blender、UE、three.js：按 LAYOUT 写一个播放器读 key.bin 即可</div></div></div>
+
+<h2><span class="n">07</span>打包内容</h2>
+<div class="pack">
+  <div class="card"><h3>lin</h3><p>VRoid 制作的 VRM 1.0 模型。作者允许再分发、修改和商用。</p></div>
+  <div class="card"><h3>舞台与立麦</h3><p>代码生成的预制体，话筒高度已按 lin 的嘴实测摆好。</p></div>
+  <div class="card"><h3>动作包</h3><p>20 个编舞动作、17 个手部姿势、43 个代码手势、Quaternius CC0 动画库、14 段 BEAT2 动捕片段。</p></div>
+</div>
+<p class="lead" style="margin-top:16px">Mixamo 动作因为 Adobe 条款不能再分发，没有包含。代码使用 MIT 协议，各项资产的授权见 ASSETS.md。</p>
+
+<div class="foot"><span>lin-sing · 角色 lin by lin2</span><span>github.com/&lt;你的账号&gt;/lin-sing</span></div>
+</div></body></html>
