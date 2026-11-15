@@ -299,7 +299,12 @@ public class FrameDumper : MonoBehaviour
             cam.backgroundColor = new Color(c[0], c[1], c[2]) * 0.50f * fd;
             if (glowMat != null) glowMat.color = new Color(c[0] * 1.8f, c[1] * 1.8f, c[2] * 1.8f, 0.85f) * breathe * fd;
             if (keyLight != null) keyLight.intensity = c[3] * fd;
-            if (floorMat != null) { var fc = new Color(c[0], c[1], c[2]) * 0.16f * fd; floorMat.color = fc; floorMat.SetColor("_BaseColor", fc); }
+            if (floorMat != null) { var fc = new Color(c[0], c[1], c[2]) * 0.55f * fd; floorMat.color = fc; floorMat.SetColor("_BaseColor", fc); }     // (lin-sing: a floor that can take the light pool)
+        }
+        if (stage && Application.isPlaying)
+        {
+            float fin = Mathf.Clamp01(t / 1.5f), fout = Mathf.Clamp01((startTime + duration - t) / 2.5f);
+            StageLook.Step(this, driver, cam, t, headS, (show || cam2.Count > 0) && startTime <= 0 ? fin * (duration > 60 && !live ? fout : 1f) : 1f);       // lin-sing: rim / pool / fill lights, post, a little hand-held drift
         }
     }
 
@@ -407,7 +412,7 @@ public class FrameDumper : MonoBehaviour
             {
                 if (camB == null) { camB = new GameObject("CamB (dissolve)").AddComponent<Camera>(); camB.enabled = false; }
                 if (rtB == null || rtB.width != Screen.width || rtB.height != Screen.height) { if (rtB != null) rtB.Release(); rtB = new RenderTexture(Screen.width, Screen.height, 24) { antiAliasing = 2 }; }
-                camB.CopyFrom(cam); camB.enabled = false; camB.targetTexture = rtB;
+                camB.CopyFrom(cam); StageLook.Prep(camB); camB.enabled = false; camB.targetTexture = rtB;
                 PosePath(other, t, headS, camB); camB.Render(); PosePath(PathOf(t), t, headS, cam);      // (the glow card stands behind her for each camera in turn)
                 liveAlpha = 1f - wMain;
             }

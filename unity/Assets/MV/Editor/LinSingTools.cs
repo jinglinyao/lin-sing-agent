@@ -62,7 +62,7 @@ public static class LinSingTools
     {
         var folder = SessionState.GetString(KeyFolder, "");
         if (string.IsNullOrEmpty(folder)) { EditorUtility.DisplayDialog("LinSing", "Load a song folder first (LinSing / Load Song Folder...).", "OK"); return; }
-        StartRender(folder, 30, 1080);
+        StartRender(folder, 30, 1080, 0f, -1f);
     }
 
     // ------------------------------------------------------------------ batch entry points
@@ -77,7 +77,8 @@ public static class LinSingTools
         var dir = Arg("-song"); if (dir == null) { Debug.LogError("[LinSing] -song <folder> missing"); EditorApplication.Exit(2); return; }
         dir = Path.GetFullPath(dir);
         Debug.Log("[LinSing] " + LoadSong(dir));
-        StartRender(dir, int.Parse(Arg("-fps", "30")), int.Parse(Arg("-height", "1080")));
+        var ci = System.Globalization.CultureInfo.InvariantCulture;
+        StartRender(dir, int.Parse(Arg("-fps", "30")), int.Parse(Arg("-height", "1080")), float.Parse(Arg("-from", "0"), ci), float.Parse(Arg("-to", "-1"), ci));
     }
 
     /// <summary>Measures lin in the stage scene (joints, microphone, both grips, body outline) -> pipeline/lin_sing/data/lin_rig.json.
@@ -132,6 +133,9 @@ public static class LinSingTools
         MvSetup.KeyClip(Path.Combine(folder, "key.bin").Replace('\\', '/'), 1);
         string look = MvSetup.SetLookFromFile(Path.Combine(folder, "look.txt"));
         fd.showFile = Path.Combine(folder, "show.txt").Replace('\\', '/');
+        var ov = UnityEngine.Object.FindFirstObjectByType<LyricOverlay>();                     // the lyric captions in the live player
+        if (ov == null) ov = new GameObject("LyricOverlay").AddComponent<LyricOverlay>();
+        ov.driver = d; ov.subsPath = File.Exists(Path.Combine(folder, "subs.json")) ? Path.Combine(folder, "subs.json").Replace('\\', '/') : ""; EditorUtility.SetDirty(ov);
         SessionState.SetString(KeyFolder, folder);
         SetLive();
         return $"loaded {folder}: {clip.length:F1} s; {look}; shapes the model lacks: [{missing}]";
@@ -150,12 +154,13 @@ public static class LinSingTools
     }
 
     /// <summary>Offline render: play mode at a fixed frame rate, one JPG per frame into &lt;folder&gt;/frames; the pipeline muxes the sound afterwards.</summary>
-    static void StartRender(string folder, int fps, int height)
+    static void StartRender(string folder, int fps, int height, float from, float to)
     {
         var d = UnityEngine.Object.FindFirstObjectByType<SingDriver>(); var fd = UnityEngine.Object.FindFirstObjectByType<FrameDumper>();
         var frames = Path.Combine(folder, "frames"); if (Directory.Exists(frames)) Directory.Delete(frames, true);
         fd.live = false; fd.stage = true; fd.outDir = frames.Replace('\\', '/'); fd.fps = fps; fd.height = height; fd.width = height * 16 / 9;
-        fd.startTime = 0f; fd.duration = d.audioSource.clip.length + 0.05f; d.mouth = 1f;
+        float len = d.audioSource.clip.length; from = Mathf.Clamp(from, 0f, len - 0.5f); if (to <= from) to = len;
+        fd.startTime = from; fd.duration = Mathf.Min(to, len) - from + 0.05f; d.mouth = 1f;
         EditorUtility.SetDirty(fd); EditorUtility.SetDirty(d);
         EditorSceneManager.MarkSceneDirty(fd.gameObject.scene); EditorSceneManager.SaveScene(fd.gameObject.scene);
         SessionState.SetBool(KeyRender, true); SessionState.SetString(KeyFolder, folder);

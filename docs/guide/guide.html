@@ -7,7 +7,7 @@
 body { width: 1080px; background: var(--bg); color: var(--ink); font-family: "NS", sans-serif; font-weight: 400; font-size: 22px; line-height: 1.6; }
 .wrap { padding: 0 56px 64px; }
 .hero { position: relative; height: 760px; overflow: hidden; }
-.hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; }
+.hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0%; }
 .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(13,16,32,0) 40%, rgba(13,16,32,.85) 78%, var(--bg) 100%); }
 .hero .t { position: absolute; left: 56px; right: 56px; bottom: 40px; z-index: 2; }
 .hero h1 { font-size: 92px; font-weight: 900; letter-spacing: 2px; line-height: 1.05; }
@@ -77,17 +77,18 @@ td.y { color: var(--ok); } td.n { color: #c3b6bf; }
 </div>
 
 <h2><span class="n">02</span>工作原理</h2>
-<p class="lead">九步流水线，每一步只产出一个文件。任何一步都能单独重做或替换。</p>
+<p class="lead">十步流水线，每一步只产出一个文件。任何一步都能单独重做或替换。</p>
 <div class="flow">
   <div class="st"><div class="k">1</div><div><b>检查与规范化</b><small>最长 10 分钟；超过 5 分钟会提示可能卡顿。统一转成 44.1 kHz WAV</small></div><div class="f"><code>song.wav</code></div></div>
   <div class="st"><div class="k">2</div><div><b>人声 / 伴奏分离</b><small>Demucs：口型只听人声，律动只听伴奏</small></div><div class="f"><code>vocals / no_vocals</code></div></div>
-  <div class="st"><div class="k">3</div><div><b>歌词分句</b><small>可以用你提供的 LRC 或纯文本歌词，也可以让 Whisper 逐段去听（顺带过滤幻觉句）</small></div><div class="f"><code>lines.json</code></div></div>
-  <div class="st"><div class="k">4</div><div><b>音节强制对齐</b><small>日语转假名、中文转拼音、英语按元音切，再用 MMS_FA 对到每个音节</small></div><div class="f"><code>morae.json</code></div></div>
+  <div class="st"><div class="k">3</div><div><b>歌词分句</b><small>用你给的歌词（纯文本、LRC，或“原文 | 译文”）；没给就让 Whisper 逐段去听。重复的副歌也能对准位置</small></div><div class="f"><code>lines.json</code></div></div>
+  <div class="st"><div class="k">4</div><div><b>音节强制对齐</b><small>日语转假名、中文转拼音、英语按元音切，再用 MMS_FA 对到每个音节；对得不合理的句子会自动重对</small></div><div class="f"><code>morae.json</code></div></div>
   <div class="st"><div class="k">5</div><div><b>读懂音乐</b><small>速度、拍点、小节线，以及每小节伴奏的高、中、低频响度</small></div><div class="f"><code>structure.json</code></div></div>
-  <div class="st"><div class="k">6</div><div><b>面部轨道</b><small>元音口型、辅音闭唇、眨眼、长音闭眼、视线；嘴提前 67 毫秒</small></div><div class="f"><code>face.json</code></div></div>
-  <div class="st"><div class="k">7</div><div><b>自动编舞 + 烘焙</b><small>按乐句和强弱选动作；手的路线走弧线，起得快、落得缓，带回弹和呼吸</small></div><div class="f"><code>choreo.json → key.bin</code></div></div>
-  <div class="st"><div class="k">8</div><div><b>自动运镜</b><small>一台摄像机沿小节线连续移动，段落变化时两拍叠化，不用硬切</small></div><div class="f"><code>show.txt</code></div></div>
-  <div class="st"><div class="k">9</div><div><b>Unity 播放 / 渲染</b><small>Unity 只负责播放烘好的数据：实时预览带声音，渲染出 mp4</small></div><div class="f"><code>song.mp4</code></div></div>
+  <div class="st"><div class="k">6</div><div><b>面部轨道</b><small>元音口型、辅音闭唇、眨眼、长音闭眼、视线；表情随段落和歌曲情绪变化</small></div><div class="f"><code>face.json</code></div></div>
+  <div class="st"><div class="k">7</div><div><b>自动编舞 + 烘焙</b><small>按乐句和强弱选动作；句首小回拍、停留时漂移、点头侧倾和呼吸自动加上</small></div><div class="f"><code>choreo.json → key.bin</code></div></div>
+  <div class="st"><div class="k">8</div><div><b>自动运镜与灯光</b><small>整首一台连续运动的摄像机，不叠化、不硬切；轮廓光、顶光和背景色随段落变化</small></div><div class="f"><code>show.txt</code></div></div>
+  <div class="st"><div class="k">9</div><div><b>歌词字幕</b><small>按音节时间出现和消失，原文下面可以带一行译文，字幕固定在屏幕下方</small></div><div class="f"><code>subs.ass</code></div></div>
+  <div class="st"><div class="k">10</div><div><b>Unity 播放 / 渲染</b><small>Unity 只负责播放烘好的数据：可以带声音实时预览，也可以渲染一段预览或整首 mp4</small></div><div class="f"><code>song.mp4</code></div></div>
 </div>
 <div class="agent"><b>智能体在哪里？</b>管线本身不需要大模型，一条命令就能跑完。智能体负责三件事：一是调用管线；二是读懂歌词情绪，改写编舞表（比如“这句唱‘我哭了’，要双拳抵胸”）；三是按清单验收，如实汇报。</div>
 
@@ -97,7 +98,7 @@ td.y { color: var(--ok); } td.n { color: #c3b6bf; }
   <tr><th></th><th>lin-sing</th><th>付费 AI 数字人 / 视频生成</th></tr>
   <tr><td>费用</td><td class="y">免费，用本地显卡</td><td class="n">按秒或按次计费</td></tr>
   <tr><td>能不能改</td><td class="y">编舞表的每一条都能改，几秒重烘</td><td class="n">只能整段重新生成</td></tr>
-  <tr><td>口型</td><td class="y">逐音节对齐，专门处理唱歌的长音和闭唇</td><td class="n">多为说话口型</td></tr>
+  <tr><td>口型与字幕</td><td class="y">逐音节对齐，专门处理唱歌的长音和闭唇；你给的歌词直接变成双语字幕</td><td class="n">多为说话口型，字幕要另外做</td></tr>
   <tr><td>音乐感</td><td class="y">动作落在拍子和小节上，主歌、副歌分档</td><td class="n">动作和音乐基本无关</td></tr>
   <tr><td>角色一致</td><td class="y">同一个 3D 模型，每一帧都是她</td><td class="n">换个镜头，脸可能就变了</td></tr>
   <tr><td>时长</td><td class="y">一次最长 10 分钟</td><td class="n">常见单段几秒到一分钟</td></tr>
@@ -110,10 +111,11 @@ td.y { color: var(--ok); } td.n { color: #c3b6bf; }
 <div class="steps">
   <div class="step"><div class="k"></div><div class="b"><b>安装依赖</b><p>先按你的显卡装好 PyTorch，再装其余依赖。</p><span class="cmd">pip install -r pipeline/requirements.txt</span></div></div>
   <div class="step"><div class="k"></div><div class="b"><b>第一次打开工程</b><p>用 Unity 6 打开 unity/，点菜单 LinSing / First-time Setup。它会重新导入 lin 并量好她的尺寸。</p></div></div>
-  <div class="step"><div class="k"></div><div class="b"><b>换上你的歌</b><p>有歌词就附上，LRC 或纯文本都行；没有也可以，程序会自己听。</p><span class="cmd">python linsing.py make 我的歌.mp3 --lyrics 歌词.lrc</span></div></div>
+  <div class="step"><div class="k"></div><div class="b"><b>换上你的歌，附上歌词</b><p>把歌词发给智能体，或者存成 txt：一行一句；要显示译文就写成“原文 | 译文”。没有歌词也行，程序会自己听，但准确度会低一些。</p><span class="cmd">python linsing.py make 我的歌.mp3 --lyrics 歌词.txt --mood sad</span></div></div>
   <div class="step"><div class="k"></div><div class="b"><b>实时预览</b><p>在 Unity 里点 LinSing / Load Song Folder，选中 songs/我的歌，再点 Play，就能带声音实时看。</p></div></div>
   <div class="step"><div class="k"></div><div class="b"><b>（可选）让智能体改编舞</b><p>比如说：“副歌第二句双手打开，最后一句俯身贴麦。”它会改 choreo.json 并重新烘焙。</p><span class="cmd">python linsing.py bake ../songs/我的歌</span></div></div>
-  <div class="step"><div class="k"></div><div class="b"><b>渲染成视频</b><p>Unity 会自己打开、渲染、关闭，最后合上声音。</p><span class="cmd">python linsing.py render ../songs/我的歌</span></div></div>
+  <div class="step"><div class="k"></div><div class="b"><b>先看 30 秒预览，再出整首</b><p>Unity 会自己打开、渲染、关闭，最后合上声音并烧好字幕。</p><span class="cmd">python linsing.py render ../songs/我的歌 --from 60 --to 90
+python linsing.py render ../songs/我的歌</span></div></div>
 </div>
 <div class="warn"><h3>⚠ 关于音频长度</h3><p>只支持 <b>10 分钟以内</b>的音频，超过会被拒绝。<br>一次输入 <b>5 分钟以上</b>的音频，电脑可能会卡顿：人声分离、音节对齐、动作烘焙的耗时和显存都随长度增长。程序能跑完，只是会慢；也可以先把歌切成几段分别处理。</p></div>
 
@@ -132,19 +134,20 @@ td.y { color: var(--ok); } td.n { color: #c3b6bf; }
 <h2><span class="n">06</span>设计步骤：读懂了就能换模型</h2>
 <p class="lead">每一步都有固定的“接口文件”。换工具时，只要新工具产出同样格式的文件，后面的步骤完全不用改。</p>
 <div class="ds"><div class="h"><b>② 人声分离</b><code>vocals.wav / no_vocals.wav</code></div><div class="r"><span>现在用</span><div>Demucs htdemucs（MIT）</div><span>可以换成</span><div class="sw">UVR / MDX-Net、Spleeter、云端分离 API</div></div></div>
-<div class="ds"><div class="h"><b>③ 歌词识别</b><code>lines.json · {t, end, text}</code></div><div class="r"><span>现在用</span><div>faster-whisper large-v3，按人声区间逐段识别，过滤幻觉句</div><span>可以换成</span><div class="sw">SenseVoice、Paraformer、云端 ASR，或者直接手写 LRC</div></div></div>
-<div class="ds"><div class="h"><b>④ 音节对齐</b><code>morae.json · [辅音, 元音, 起, 元音起, 止, 分]</code></div><div class="r"><span>现在用</span><div>MMS_FA（仅限非商用），每个窗口不超过 30 秒，低分句子再单独重对一遍</div><span>可以换成</span><div class="sw">Montreal Forced Aligner、WhisperX、NeMo（商用请换掉 MMS_FA）</div><span>加新语言</span><div>写一个 units_xx(text)，返回 (字母, 辅音, 元音, 元音位置)，登记到 UNITS</div></div></div>
+<div class="ds"><div class="h"><b>③ 歌词</b><code>lines.json · {t, end, text, trans}</code></div><div class="r"><span>现在用</span><div>用户给的歌词，和 Whisper（按人声区间逐段识别）听到的内容做全局编辑距离对齐；不给歌词时，在停顿和词边界断句</div><span>可以换成</span><div class="sw">SenseVoice、Paraformer、云端 ASR，或者直接手写 LRC</div></div></div>
+<div class="ds"><div class="h"><b>④ 音节对齐</b><code>morae.json · [辅音, 元音, 起, 元音起, 止, 分]</code></div><div class="r"><span>现在用</span><div>MMS_FA（仅限非商用），每个窗口不超过 30 秒；低分或偏离歌词时间的句子单独重对，还不合理就均匀铺开</div><span>可以换成</span><div class="sw">Montreal Forced Aligner、WhisperX、NeMo（商用请换掉 MMS_FA）</div><span>加新语言</span><div>写一个 units_xx(text)，返回 (字母, 辅音, 元音, 元音位置)，登记到 UNITS</div></div></div>
 <div class="ds"><div class="h"><b>⑤ 音乐结构</b><code>structure.json · beats / bars</code></div><div class="r"><span>现在用</span><div>librosa：节拍、4/4 拍小节线、分频段响度</div><span>可以换成</span><div class="sw">madmom、BeatNet、All-In-One（能分出主歌和副歌段落）</div></div></div>
 <div class="ds"><div class="h"><b>⑥ 面部轨道</b><code>face.json · 60 fps</code></div><div class="r"><span>现在用</span><div>VRoid 自带的 A I U E O 形变 + 辅音规则 + 眨眼和视线</div><span>换角色</span><div class="sw">VRoid 导出的模型可以直接用；其它模型在 make_face.py 的 VOWEL / CONS 里改成自己的形变名</div></div></div>
-<div class="ds"><div class="h"><b>⑦ 编舞与烘焙</b><code>choreo.json → key.bin</code></div><div class="r"><span>现在用</span><div>规则编舞（乐句 × 强弱 × 不重复）+ 手 K 风格的过渡函数</div><span>可以换成</span><div class="sw">让大模型直接写 choreo.json；或者接音乐驱动动作模型（EDGE 等），把输出重定向成同样的 57 个通道</div><span>换角色</span><div>Unity 菜单 LinSing / Measure Rig，重新量握麦点和扶杆点</div></div></div>
-<div class="ds"><div class="h"><b>⑧ 运镜</b><code>show.txt · cam2 / xfade / beat</code></div><div class="r"><span>现在用</span><div>按强弱分档选景别，关键帧落在小节线上，段落之间两拍叠化</div><span>可以换成</span><div class="sw">手写镜头表，或者让智能体按歌词写镜头</div></div></div>
-<div class="ds"><div class="h"><b>⑨ 播放引擎</b><code>key.bin · float32 × 57 通道</code></div><div class="r"><span>现在用</span><div>Unity 6 + URP + UniVRM，只负责播放</div><span>可以换成</span><div class="sw">Blender、UE、three.js：按 LAYOUT 写一个播放器读 key.bin 即可</div></div></div>
+<div class="ds"><div class="h"><b>⑦ 编舞与烘焙</b><code>choreo.json → key.bin</code></div><div class="r"><span>现在用</span><div>规则编舞（乐句 × 强弱 × 不重复）+ 手 K 风格的过渡函数 + 自动加细节（小回拍、漂移、点头、呼吸）</div><span>可以换成</span><div class="sw">让大模型直接写 choreo.json；或者接音乐驱动动作模型（EDGE 等），把输出重定向成同样的 57 个通道</div><span>换角色</span><div>Unity 菜单 LinSing / Measure Rig，重新量握麦点和扶杆点</div></div></div>
+<div class="ds"><div class="h"><b>⑧ 运镜与灯光</b><code>show.txt · cam2 / col / tint / lit</code></div><div class="r"><span>现在用</span><div>整首一台连续摄像机，近景偏开 14° 让话筒不挡嘴；四盏灯加后期，按段落和 mood 换冷暖</div><span>可以换成</span><div class="sw">手写镜头表和灯光表，或者让智能体按歌词来写</div></div></div>
+<div class="ds"><div class="h"><b>⑨ 字幕</b><code>subs.ass / subs.json</code></div><div class="r"><span>现在用</span><div>按音节时间淡入淡出，原文下面带译文；ffmpeg 烧进画面，字体 Noto Sans SC</div><span>可以换成</span><div class="sw">改 subtitles.py 里的 ASS 样式，或者导出 srt 交给剪辑软件</div></div></div>
+<div class="ds"><div class="h"><b>⑩ 播放引擎</b><code>key.bin · float32 × 57 通道</code></div><div class="r"><span>现在用</span><div>Unity 6 + URP + UniVRM，只负责播放</div><span>可以换成</span><div class="sw">Blender、UE、three.js：按 LAYOUT 写一个播放器读 key.bin 即可</div></div></div>
 
 <h2><span class="n">07</span>打包内容</h2>
 <div class="pack">
   <div class="card"><h3>lin</h3><p>VRoid 制作的 VRM 1.0 模型。作者允许再分发、修改和商用。</p></div>
   <div class="card"><h3>舞台与立麦</h3><p>代码生成的预制体，话筒高度已按 lin 的嘴实测摆好。</p></div>
-  <div class="card"><h3>动作包</h3><p>20 个编舞动作、17 个手部姿势、43 个代码手势、Quaternius CC0 动画库、14 段 BEAT2 动捕片段。</p></div>
+  <div class="card"><h3>动作包</h3><p>24 个编舞动作、17 个手部姿势、43 个代码手势、Quaternius CC0 动画库、14 段 BEAT2 动捕片段。</p></div>
 </div>
 <p class="lead" style="margin-top:16px">Mixamo 动作因为 Adobe 条款不能再分发，没有包含。代码使用 MIT 协议，各项资产的授权见 ASSETS.md。</p>
 

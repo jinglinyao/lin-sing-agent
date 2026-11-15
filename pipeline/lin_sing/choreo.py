@@ -63,6 +63,8 @@ MOVES = {
     "mic_chest":  dict(level=0, R="MIC", L="CHEST", torso=(2.0, -1, 0.5), head=(14, -2, 2), look=0),
     "mic_hand":   dict(level=0, R="MIC", L="LOOKHAND", torso=(2.6, -3, 1), head=(16, -8, 3), look=5),
     "mic_bow":    dict(level=0, R="MIC", L="POLE", torso=(3.8, 0, 0.6), head=(17.5, 0, 3), look=0),
+    "hand_chest": dict(level=0, R="CHEST", L="POLE", torso=(2.4, 1.5, -0.6), head=(12, 3, -2), look=5),
+    "hand_look":  dict(level=0, R="LOOKHAND", L="POLE", torso=(2.8, 2.5, -1.0), head=(16, 7, -3), look=5),
     # middle: one hand tells it
     "explain":    dict(level=1, R="EXPLAIN", L="POLE", torso=(-0.5, 3.5, 0.5), head=(1.5, -3.5, 1.5), look=1, beats=True),
     "sweep":      dict(level=1, R="SWEEP", L="POLE", torso=(0.5, 6.0, -1.0), head=(4, 6, -2.5), look=3),
@@ -81,7 +83,9 @@ MOVES = {
     "mic_wide":   dict(level=2, R="MIC", L="WIDE", torso=(-1.0, -2.0, 0.5), head=(9, -3, 1), look=0),
     # no voice
     "rest":       dict(level=-1, R="IDLE", L="POLE", torso=(1.0, 0, 0), head=(9, 0, 0), look=4),
-    "rest_open":  dict(level=-1, R="LOWOPEN", L="POLE", torso=(0.5, 2.0, 0), head=(6, 4, 0), look=1),
+    "rest_open":  dict(level=-1, R="LOWOPEN", L="LOWOPEN", torso=(0.5, 2.0, 0), head=(6, 4, 0), look=1),
+    "rest_far":   dict(level=-1, R="IDLE", L="POLE", torso=(-0.5, -3.0, 0.5), head=(-2, -9, 1.5), look=4),
+    "rest_lean":  dict(level=-1, R="LOWOPEN", L="POLE", torso=(2.2, 4.0, -1.0), head=(12, 6, -3), look=5),
 }
 MIC_VIA_OFF = V(0.225, 1.275, 0.205)          # the right hand leaves the microphone back along its own fingers first, to her side
 POLE_VIA = V(-0.170, 1.140, 0.215)
@@ -107,10 +111,10 @@ def analyse(folder):
     return st, out, meta["duration"]
 
 
-def plan(folder, seed=7):
+def plan(folder, seed=7, mood="neutral"):
     """the dope sheet as data: [{t, end, move, level}] for the sung phrases and the gaps"""
     st, phrases, dur = analyse(folder); rnd = random.Random(seed)
-    sheet = []; recent = []; mic_time = 0.0; sung = 0.0
+    sheet = []; recent = []; mic_time = 0.0; sung = 0.0; pole_since = 0.0; mic_since = 1e9
     first = phrases[0]["t"] if phrases else dur
     sheet.append(dict(t=0.0, end=round(max(0.0, first - 0.05), 3), move="rest", level=-1))
     for i, p in enumerate(phrases):
@@ -118,6 +122,8 @@ def plan(folder, seed=7):
         if i and p["t"] - phrases[i - 1]["end"] > 6.0:                    # a long gap without voice: an interlude
             g0 = phrases[i - 1]["end"] + 0.4; sheet.append(dict(t=round(g0, 3), end=round(p["t"] - 0.05, 3), move=rnd.choice(["rest", "rest_open"]), level=-1))
         lev = p["level"]; cands = [k for k, m in MOVES.items() if m["level"] == lev and k not in recent[-3:]]
+        if p["t"] - pole_since > 12.0 and any(MOVES[k]["L"] != "POLE" for k in cands): cands = [k for k in cands if MOVES[k]["L"] != "POLE"]   # the left hand has held the stand long enough
+        if p["t"] - mic_since > 14.0 and any(MOVES[k]["R"] != "MIC" for k in cands): cands = [k for k in cands if MOVES[k]["R"] != "MIC"]      # and the right hand the microphone
         if not cands: cands = [k for k, m in MOVES.items() if m["level"] == lev and k != (recent[-1] if recent else None)]
         w = []
         for k in cands:
@@ -126,9 +132,104 @@ def plan(folder, seed=7):
         k = rnd.choices(cands, weights=w)[0]
         if i == 0 and lev <= 1: k = "mic"                                     # the voice comes in at the microphone
         sheet.append(dict(t=p["t"], end=round(min(nxt, p["end"] + 1.5), 3), move=k, level=lev, energy=p["energy"]))
+        if MOVES[k]["L"] != "POLE": pole_since = p["end"]
+        if MOVES[k]["R"] != "MIC": mic_since = 1e9
+        elif mic_since > 1e8: mic_since = p["t"]
         recent.append(k); sung += p["end"] - p["t"]; mic_time += (p["end"] - p["t"]) if MOVES[k]["R"] == "MIC" else 0.0
     if phrases: sheet.append(dict(t=round(phrases[-1]["end"] + 0.6, 3), end=round(dur, 3), move="mic_bow" if dur - phrases[-1]["end"] < 8 else "rest", level=-1))
-    return dict(note="automatic choreography (lin_sing.choreo); edit 'move' or 't' and run: python linsing.py bake <folder>", moves=list(MOVES), sheet=sheet)
+    # long stretches without voice (intro, interludes, outro) are never one frozen pose: a new rest variant every 6 - 8 s
+    out = []
+    for it in sheet:
+        if it["level"] < 0 and it["end"] - it["t"] > 9.0:
+            cyc = ["rest", "rest_far", "rest_open", "rest_lean"]; start = cyc.index(it["move"]) if it["move"] in cyc else 0
+            m_ = max(1, int(round((it["end"] - it["t"]) / 7.0))); step_ = (it["end"] - it["t"]) / m_          # equal parts of about 7 s, no short remainder
+            for k in range(m_): out.append(dict(it, t=round(it["t"] + k * step_, 3), end=round(it["t"] + (k + 1) * step_, 3), move=cyc[(start + k) % len(cyc)]))
+        else: out.append(it)
+    sheet = []
+    for it in out:                                     # nothing shorter than 1.8 s: it would only be a rush from one pose to the next
+        if sheet and it["end"] - it["t"] < 1.8 and it is not out[-1]: sheet[-1]["end"] = it["end"]; continue
+        sheet.append(it)
+    return dict(note="automatic choreography (lin_sing.choreo); edit 'move' / 't' / 'face' and run: python linsing.py bake <folder>", mood=mood,
+                moves=list(MOVES), faces=sorted({v[0] for f in FACE.values() for v in f.values()} | {"sad", "anger", "fear", "shut"}), sheet=sheet)
+
+
+def strong_syllables(folder, top=0.22):
+    """vowel onsets that are both loud (vocal level) and close to a beat: where a singer accents"""
+    import soundfile as sf
+    mo = json.load(open(os.path.join(folder, "morae.json"), encoding="utf-8"))["morae"]
+    beats = np.array(json.load(open(os.path.join(folder, "structure.json")))["beats"])
+    p = os.path.join(folder, "sep", "htdemucs", "song", "vocals.wav")
+    if not os.path.exists(p) or len(beats) == 0: return []
+    x, sr = sf.read(p)
+    if x.ndim > 1: x = x.mean(1)
+    def lev(t): a = int(t * sr); seg = x[a:a + int(0.12 * sr)]; return float(np.sqrt(np.mean(seg ** 2))) if len(seg) else 0.0
+    cand = [(lev(m[3]), m[3]) for m in mo if m[1]]
+    if not cand: return []
+    thr = np.quantile([c[0] for c in cand], 1 - top); out = []
+    for l, t in sorted(cand, key=lambda c: c[1]):
+        if l >= thr and np.min(np.abs(beats - t)) < 0.09 and (not out or t - out[-1] > 1.4): out.append(t)
+    return out
+
+
+def enrich(events, side, line_t, strong, T1, grips, seed=0):
+    """A pose held for seconds is never a statue: a free hand re-strokes on the lines and loud syllables inside its hold (a small push and
+    back, alternating variants), and drifts to a slightly different version of the pose every ~2 s. A hand on the microphone or the stand
+    stays put (the grip is locked)."""
+    rnd = random.Random(seed); sx = 1.0 if side == "R" else -1.0; out = []
+    VAR = [(0.008, -0.018, 0.014), (-0.010, 0.014, 0.010), (0.014, 0.006, -0.008), (0.004, 0.020, 0.012)]
+    def shifted(pose, d, curl=0.0):
+        q = dict(pose); q["pos"] = np.array(pose["pos"]) + V(d[0] * sx, d[1], d[2])
+        if curl: q["curl"] = np.clip(np.array(pose["curl"]) + curl, -0.2, 1.0)
+        return q
+    for i, e in enumerate(events):
+        out.append(e)
+        if i == 0: continue
+        nxt = events[i + 1]["t"] if i + 1 < len(events) else T1
+        if any(e["pose"] is g or np.allclose(np.array(e["pose"]["pos"]), np.array(g["pos"])) for g in grips): continue
+        if e.get("name") in ("beat", "back", "drift"): continue
+        base = e["pose"]; last = e["t"]; k = rnd.randrange(len(VAR))
+        marks = sorted(set([x for x in line_t if e["t"] + 0.9 < x < nxt - 1.9] + [x for x in strong if e["t"] + 0.9 < x < nxt - 1.9]))
+        t = last + 2.2
+        for x in marks + [None]:
+            while t < (x if x is not None else nxt - 1.4) - 0.9 and t < nxt - 1.4:                 # long hold: drift to a variant and settle
+                d = VAR[rnd.randrange(len(VAR))]; amp = rnd.uniform(0.6, 1.0)
+                out.append(dict(t=t, pose=shifted(base, (d[0] * amp, d[1] * amp * 0.6, d[2] * amp), rnd.uniform(-0.05, 0.05)), name="drift", dur=1.15, over=0.02, antic=0.0))
+                last = t; t += rnd.uniform(1.9, 2.6)
+            if x is None or x - last < 0.9: continue
+            d = VAR[k % len(VAR)]; k += 1
+            out.append(dict(t=x + 0.05, pose=shifted(base, d, 0.04), name="beat", dur=0.34, over=0.03, antic=0.01))
+            out.append(dict(t=x + 0.66, pose=base, name="back", dur=0.48))
+            last = x + 0.66; t = last + 2.2
+    return sorted(out, key=lambda e: e["t"])
+
+
+FACE = {"neutral": {-1: ("calm", 0.6), 0: ("tender", 0.7), 1: ("calm", 0.9), 2: ("plead", 0.6)},
+        "sad":     {-1: ("calm", 0.7), 0: ("sad", 0.8), 1: ("plead", 0.8), 2: ("pain", 0.7)},
+        "bright":  {-1: ("calm", 0.5), 0: ("tender", 0.8), 1: ("bright", 0.9), 2: ("joy", 0.9)}}
+
+
+def write_face(folder, sheet, mood="neutral", log=print):
+    """face.json with the emotions of the dope sheet (each item may name its own: "face": "sad" | "plead" | "joy" ...)"""
+    import subprocess
+    here = os.path.dirname(os.path.abspath(__file__)); J = lambda *p: os.path.join(folder, *p)
+    emo = []
+    for s in sheet:
+        name, inten = FACE.get(mood, FACE["neutral"])[max(-1, min(2, s["level"]))]
+        emo.append([float(s["t"]), s.get("face", name), float(s.get("face_strength", inten))])
+    json.dump(dict(emotions=emo), open(J("emotions.json"), "w"))
+    voc, inst = J("sep", "htdemucs", "song", "vocals.wav"), J("sep", "htdemucs", "song", "no_vocals.wav")
+    py = [sys.executable, "-X", "utf8"]
+    subprocess.run(py + [os.path.join(here, "make_face.py"), voc, J("morae.json"), J("face.json"), "-", "vroid", "auto", J("emotions.json")], check=True, stdout=subprocess.DEVNULL)
+    b = json.load(open(J("face.json"))); n = len(b["names"]); w = b["w"]; cnt = len(w) // n; S = 4          # mouth 67 ms early; eye highlights never hidden
+    for c, nm in enumerate(b["names"]):
+        if nm == "Fcl_EYE_Highlight_Hide":
+            for f in range(cnt): w[f * n + c] = 0.0
+        if "MTH" in nm:
+            col = [w[f * n + c] for f in range(cnt)]; col = col[S:] + [col[-1]] * S
+            for f in range(cnt): w[f * n + c] = col[f]
+    json.dump(b, open(J("face.json"), "w"), separators=(",", ":"))
+    subprocess.run(py + [os.path.join(here, "add_groove.py"), J("face.json"), inst, J("beats.json")], check=True, stdout=subprocess.DEVNULL)
+    log(f"  face: {len(emo)} expression changes ({mood})")
 
 
 def bake(folder, log=print):
@@ -136,7 +237,8 @@ def bake(folder, log=print):
     rig = load_rig(); P, GW = pose_library(rig); M = mirror
     st = json.load(open(os.path.join(folder, "structure.json"))); beats = st["beats"]; bars = st["bars"]
     meta = json.load(open(os.path.join(folder, "song.json"), encoding="utf-8")); dur = meta["duration"]
-    sheet = json.load(open(os.path.join(folder, "choreo.json"), encoding="utf-8"))["sheet"]
+    cj = json.load(open(os.path.join(folder, "choreo.json"), encoding="utf-8")); sheet = cj["sheet"]
+    write_face(folder, sheet, cj.get("mood", "neutral"), log=log)
     mo = json.load(open(os.path.join(folder, "morae.json"), encoding="utf-8")); line_t = sorted(float(l[2]) for l in mo["lines"])
     T0, T1 = 0.0, dur + 0.5; A = Anim(T0, T1)
     A.style = dict(speed=0.87, over=0.07, spring_hz=1.7, spring_tau=0.22)
@@ -166,9 +268,6 @@ def bake(folder, log=print):
                 rc += [(ts - 0.32, 1.0), (ts - 0.02, 0.0)]; rg += [(ts - 0.05, 1.0), (ts + 0.35, 0.0)]
                 R.append(E(ta, pose, s["move"], dur=D, via=MIC_VIA_OFF, turn_lag=0.36, over=0.04)); r_on = False
             else: R.append(E(ta, pose, s["move"]))
-            if m.get("beats") and s["end"] - ta > 1.6:                       # small re-strokes on the next lines inside the phrase
-                for lt in [x for x in line_t if ta + 0.8 < x < s["end"] - 0.5][:2]:
-                    R.append(E(lt + 0.05, shifted(pose, (0.008, -0.020, 0.014)), "beat", dur=0.36)); R.append(E(lt + 0.55, pose, "back", dur=0.42))
         # ---- left hand
         if m["L"] == "POLE":
             if not l_on and k > 0:
@@ -191,6 +290,8 @@ def bake(folder, log=print):
         mouth.append((ta - 0.3, 1.0 if m["R"] == "MIC" else 0.35 if m["level"] < 0 else 0.6 if m["level"] == 2 else 0.85))
         look.append((max(0.0, ta - 0.35), m["look"]))
     rg.append((T1, 1.0 if r_on else 0.0)); rc.append((T1, 1.0 if r_on else 0.0)); lg.append((T1, 1.0 if l_on else 0.0)); lc.append((T1, 1.0 if l_on else 0.0))
+    strong = strong_syllables(folder)
+    R = enrich(R, "R", line_t, strong, T1, (P["MIC"], ), seed=11); L = enrich(L, "L", line_t, strong, T1, (M(P["POLE"]), ), seed=23)
     A.seq("R", R); A.seq("L", L)
     for name, keys in (("R.grip", rg), ("R.close", rc), ("L.grip", lg), ("L.close", lc), ("mouth", mouth)):
         for t, v in keys: A.key(name, min(T1, max(T0, t)), v)
@@ -207,6 +308,18 @@ def bake(folder, log=print):
         if 0.5 < t < T1 - 0.5:
             A.key("torso+breath", t - 0.42, V(0, 0, 0)); A.key("torso+breath", t - 0.08, V(-1.3, 0, 0)); A.key("torso+breath", t + 0.45, V(0.2, 0, 0))
             for s2 in ("shrugR+breath", "shrugL+breath"): A.key(s2, t - 0.42, 0); A.key(s2, t - 0.08, 1.2); A.key(s2, t + 0.45, 0)
+    # ---- the head and the trunk go with the words: a small nod into every line (alternating tilt), a lean into it, a release at its end;
+    #      on the strongest syllables (loud vowel onsets on a beat) a shorter nod - the accents a singer gives with the head
+    ends = {round(float(l[2]), 3): float(l[3]) for l in mo["lines"]}
+    for i, t in enumerate(line_t):
+        nxt = line_t[i + 1] if i + 1 < len(line_t) else T1
+        if not (0.6 < t < T1 - 1.0) or nxt - t < 1.15: continue
+        sgn = 1 if i % 2 == 0 else -1; e_ = min(ends.get(round(t, 3), t + 2.0), t + 4.0, nxt - 0.25)
+        A.key("head+acc", t - 0.18, V(0, 0, 0)); A.key("head+acc", t + 0.30, V(2.8, 1.0 * sgn, 2.0 * sgn)); A.key("head+acc", t + 0.95, V(1.0, 0.6 * sgn, 1.4 * sgn)); A.key("head+acc", max(t + 1.2, e_), V(0, 0, 0))
+        A.key("torso+acc", t - 0.20, V(0, 0, 0)); A.key("torso+acc", t + 0.30, V(1.2, 0.8 * sgn, 0)); A.key("torso+acc", max(t + 0.9, e_), V(-0.3, 0, 0))
+    for t in strong:
+        if 0.6 < t < T1 - 1.0 and all(abs(t - x) > 0.5 for x in line_t):
+            A.key("head+nod", t - 0.20, V(0, 0, 0)); A.key("head+nod", t + 0.10, V(1.8, 0, 0)); A.key("head+nod", t + 0.65, V(0, 0, 0))
     tt, data = A.write(os.path.join(folder, "key.bin"))
     sq = [l for l in A.log if "SQUEEZED" in l]
     with open(os.path.join(folder, "look.txt"), "w", newline="\n") as f:

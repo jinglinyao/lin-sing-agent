@@ -31,7 +31,7 @@
      },
      "lyrics": {
       "type": "string",
-      "description": "optional lyrics file (.lrc with times or plain .txt)"
+      "description": "lyrics file the user gave (.txt one line per line, 'original | translation' for a caption translation; or .lrc). Shown as captions."
      },
      "lang": {
       "type": "string",
@@ -43,6 +43,15 @@
      },
      "name": {
       "type": "string"
+     },
+     "mood": {
+      "type": "string",
+      "enum": [
+       "neutral",
+       "sad",
+       "bright"
+      ],
+      "description": "her faces and the stage colours"
      }
     },
     "required": [
@@ -98,12 +107,18 @@
   "type": "function",
   "function": {
    "name": "linsing_render",
-   "description": "Render the song folder with Unity into an mp4 (the Unity editor opens and closes by itself).",
+   "description": "Render the song folder with Unity into an mp4 with the lyric captions (the Unity editor opens and closes by itself). With t_from / t_to only that part, at 720p, as a quick preview.",
    "parameters": {
     "type": "object",
     "properties": {
      "folder": {
       "type": "string"
+     },
+     "t_from": {
+      "type": "number"
+     },
+     "t_to": {
+      "type": "number"
      }
     },
     "required": [

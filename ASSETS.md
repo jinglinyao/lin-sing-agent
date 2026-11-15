@@ -5,6 +5,7 @@
 | 角色 lin | `unity/Assets/MV/Characters/lin.vrm` | 作者 lin2，用 VRoid Studio 制作 | VRM 1.0 许可：允许再分发，允许修改后再分发，允许商用（含企业），不要求署名。详见模型内的 meta 和 https://vrm.dev/licenses/1.0/ |
 | 立麦、舞台（网格、材质、预制体） | `unity/Assets/MV/Props/` | 本项目代码生成（`MvPropBuilder.cs`） | MIT |
 | 姿势库、手势库、过渡与“活着”层 | `pipeline/lin_sing/choreo.py`、`key_trans.py`、`unity/Assets/MV/Scripts/Gesture*.cs` | 本项目手工制作 | MIT |
+| 字幕字体 Noto Sans SC | `pipeline/fonts/NotoSansSC.ttf` | Google Fonts / Adobe | SIL Open Font License 1.1（见 `pipeline/fonts/OFL.txt`） |
 | Quaternius Universal Animation Library 1、2（Standard） | `unity/Assets/MV/Motion/Quaternius/` | https://quaternius.com | CC0 1.0（公有领域） |
 | BEAT2 动捕片段（14 段，已转换并清洗） | `unity/Assets/MV/Data/Clips/b2_*.json` | BEAT2 数据集（H. Liu 等，PantoMatrix / EMAGE），https://huggingface.co/datasets/H-Liu1997/BEAT2 | Hugging Face 页面标注为 Apache-2.0。**注意**：早期的 BEAT 数据集声明为非商用。商用前请自行核实，拿不准就删掉这些文件，管线不依赖它们。 |
 

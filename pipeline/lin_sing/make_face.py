@@ -155,6 +155,8 @@ def main():
         "empty":  dict(BRW_Sorrow=.10, lid=.24, hl=1.0, gp=2.5),
         "shut":   dict(BRW_Sorrow=.55, BRW_Angry=.25, lid=.92),
         "tender": dict(BRW_Sorrow=.30, EYE_Joy=.22, lid=.04),
+        "joy":    dict(EYE_Joy=.42, lid=.02),                          # bright songs: smiling eyes
+        "bright": dict(EYE_Joy=.18, EYE_Spread=.12, BRW_Surprised=.10),
     }
     emo_ch = {}
     if len(sys.argv) > 7:
@@ -194,7 +196,7 @@ def main():
     blinks = kept
     for bt in blinks:
         d = T - bt; m = (d >= 0) & (d <= 0.24)
-        v = np.where(d < 0.07, d / 0.07, np.where(d < 0.10, 1.0, 1.0 - ((d - 0.10) / 0.14) ** 0.8))
+        v = np.where(d < 0.07, d / 0.07, np.where(d < 0.10, 1.0, 1.0 - (np.clip(d - 0.10, 0, None) / 0.14) ** 0.8))
         lid[m] = np.maximum(lid[m], np.clip(v[m], 0, 1))
     E["Fcl_EYE_Close"] = np.clip(lid, 0, 1)
     if emo_ch:

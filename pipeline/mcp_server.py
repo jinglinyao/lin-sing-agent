@@ -17,21 +17,22 @@ TOOLS = [
     dict(name="linsing_check", description="Check an audio file's length for lin-sing (max 10 minutes; over 5 minutes it works but may make the computer stutter).",
          inputSchema=dict(type="object", properties=dict(audio=dict(type="string", description="path to the audio file")), required=["audio"])),
     dict(name="linsing_make", description="Make lin sing a song: separates the voice, finds the lyrics and every syllable, builds the face track, analyses the music and writes an automatic choreography and camera. Takes minutes. Returns the song folder.",
-         inputSchema=dict(type="object", properties=dict(audio=dict(type="string"), lyrics=dict(type="string", description="optional lyrics file (.lrc with times or plain .txt)"),
-                                                        lang=dict(type="string", enum=["ja", "zh", "en"]), name=dict(type="string")), required=["audio"])),
+         inputSchema=dict(type="object", properties=dict(audio=dict(type="string"), lyrics=dict(type="string", description="lyrics file the user gave (.txt one line per line, 'original | translation' for a caption translation; or .lrc). Shown as captions."),
+                                                        lang=dict(type="string", enum=["ja", "zh", "en"]), name=dict(type="string"),
+                                                        mood=dict(type="string", enum=["neutral", "sad", "bright"], description="her faces and the stage colours")), required=["audio"])),
     dict(name="linsing_get_choreo", description="Read the dope sheet of a song folder: a list of {t, end, move, level} and the moves that exist.",
          inputSchema=dict(type="object", properties=dict(folder=dict(type="string")), required=["folder"])),
     dict(name="linsing_set_choreo", description="Replace the dope sheet (list of {t, end, move, level}) of a song folder and re-bake body, eyes and camera.",
          inputSchema=dict(type="object", properties=dict(folder=dict(type="string"), sheet=dict(type="array", items=dict(type="object"))), required=["folder", "sheet"])),
-    dict(name="linsing_render", description="Render the song folder with Unity into an mp4 (the Unity editor opens and closes by itself).",
-         inputSchema=dict(type="object", properties=dict(folder=dict(type="string")), required=["folder"])),
+    dict(name="linsing_render", description="Render the song folder with Unity into an mp4 with the lyric captions (the Unity editor opens and closes by itself). With t_from / t_to only that part, at 720p, as a quick preview.",
+         inputSchema=dict(type="object", properties=dict(folder=dict(type="string"), t_from=dict(type="number"), t_to=dict(type="number")), required=["folder"])),
 ]
 
 
 def call(name, a):
     if name == "linsing_check": cmd = CLI + ["check", a["audio"]]
     elif name == "linsing_make":
-        cmd = CLI + ["make", a["audio"]] + (["--lyrics", a["lyrics"]] if a.get("lyrics") else []) + (["--lang", a["lang"]] if a.get("lang") else []) + (["--name", a["name"]] if a.get("name") else [])
+        cmd = CLI + ["make", a["audio"]] + (["--lyrics", a["lyrics"]] if a.get("lyrics") else []) + (["--lang", a["lang"]] if a.get("lang") else []) + (["--name", a["name"]] if a.get("name") else []) + (["--mood", a["mood"]] if a.get("mood") else [])
     elif name == "linsing_get_choreo":
         return open(os.path.join(a["folder"], "choreo.json"), encoding="utf-8").read()
     elif name == "linsing_set_choreo":
@@ -40,7 +41,7 @@ def call(name, a):
         if bad: return "unknown moves: %s; allowed: %s" % (bad, d["moves"])
         d["sheet"] = sorted(a["sheet"], key=lambda s: float(s["t"])); json.dump(d, open(p, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
         cmd = CLI + ["bake", a["folder"]]
-    elif name == "linsing_render": cmd = CLI + ["render", a["folder"]]
+    elif name == "linsing_render": cmd = CLI + ["render", a["folder"]] + (["--from", str(a["t_from"])] if a.get("t_from") is not None else []) + (["--to", str(a["t_to"])] if a.get("t_to") is not None else [])
     else: raise ValueError("unknown tool " + name)
     r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     out = (r.stdout + ("\n" + r.stderr if r.returncode else ""))[-6000:]
