@@ -1,0 +1,32 @@
+﻿lin-sing all-in-one package - third-party components
+=====================================================
+
+This package bundles the following software and data. Each keeps its own licence; licence texts are in the folders named.
+
+Runtime
+- CPython 3.14 (python-build-standalone build)        PSF License                   runtime/python/LICENSE.txt
+- PyTorch / torchaudio 2.11 (with NVIDIA CUDA 12.8 runtime libraries: cuBLAS, cuDNN, ...)
+                                                       BSD-3-Clause; NVIDIA redistributable components under the NVIDIA software licence
+                                                       runtime/python/Lib/site-packages/torch*/ (LICENSE / NOTICE)
+- faster-whisper, CTranslate2                          MIT
+- Demucs                                               MIT
+- librosa, numba, llvmlite, numpy, scipy, scikit-learn, soundfile, soxr, and their dependencies
+                                                       ISC / BSD / MIT / Apache-2.0 (see each *.dist-info folder in runtime/python/Lib/site-packages)
+- pykakasi                                             GPL-3.0-or-later (source: https://codeberg.org/miurahr/pykakasi)
+- pypinyin                                             MIT
+- FFmpeg (gyan.dev full build)                         GPL-3.0 (this build); source and build info: runtime/ffmpeg/ and https://www.gyan.dev/ffmpeg/builds/
+- Microsoft Visual C++ Redistributable                 Microsoft licence (redistributable installer, runtime/vc_redist.x64.exe)
+- Unity player (player/LinSing.exe, built with Unity 6 Personal)   Unity Software Terms
+- UniVRM                                               MIT
+
+Models (models/)
+- Whisper large-v3, converted for CTranslate2 (Systran/faster-whisper-large-v3)    MIT (OpenAI Whisper)
+- HTDemucs (adefossez/HTDemucs)                        MIT
+- MMS_FA forced-alignment model (Meta, via torchaudio)  CC BY-NC 4.0 - NON-COMMERCIAL USE ONLY.
+                                                       Because of this model, the package as a whole is for non-commercial use.
+
+Assets
+- Character lin (lin.vrm), author lin2                 VRM 1.0 licence: redistribution and modification allowed, commercial use allowed
+- Caption font Noto Sans SC                            SIL Open Font License 1.1 (pipeline/fonts/OFL.txt)
+
+lin-sing code: MIT (LICENSE). Project: https://github.com/jinglinyao/lin-sing-agent

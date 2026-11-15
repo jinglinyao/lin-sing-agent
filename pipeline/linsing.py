@@ -18,6 +18,29 @@ import os, sys, json, glob, shutil, argparse, subprocess, time
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 MAX_S, WARN_S = 600.0, 300.0
+
+
+def setup_portable():
+    """In the all-in-one package (it has models/ next to pipeline/) everything comes from the package and nothing is downloaded:
+    model caches, ffmpeg, the numba cache - and the Hugging Face hub is told to stay offline. In a developer checkout this does nothing."""
+    models = os.path.join(ROOT, "models")
+    if not os.path.isdir(models):                      # a developer checkout: model caches named in pipeline/config.json (this computer only)
+        cfg = os.path.join(HERE, "config.json")
+        if os.path.exists(cfg):
+            c = json.load(open(cfg, encoding="utf-8"))
+            if c.get("hf_home"): os.environ.setdefault("HF_HOME", c["hf_home"])
+            if c.get("torch_home"): os.environ.setdefault("TORCH_HOME", c["torch_home"])
+        return False
+    os.environ["HF_HOME"] = os.path.join(models, "hf"); os.environ["TORCH_HOME"] = os.path.join(models, "torch")
+    for k in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "HF_DATASETS_OFFLINE", "HF_HUB_DISABLE_TELEMETRY", "DO_NOT_TRACK"): os.environ[k] = "1"
+    os.environ["NUMBA_CACHE_DIR"] = os.path.join(ROOT, "cache", "numba"); os.environ["PYTHONNOUSERSITE"] = "1"
+    os.environ["LINSING_REQUIRE_GPU"] = "1"                                  # NVIDIA only, no CPU fallback
+    tools = os.path.join(ROOT, "runtime", "ffmpeg")
+    if os.path.isdir(tools): os.environ["PATH"] = tools + os.pathsep + os.environ.get("PATH", "")
+    return True
+
+
+PORTABLE = setup_portable()
 # When an agent reads this program's output through a pipe, Python writes in the system code page (GBK on Chinese Windows), which has no
 # ✓ / ✗ and no kana in some cases - the report would crash. Piped output is UTF-8; a real console is left alone.
 for _s in (sys.stdout, sys.stderr):
@@ -33,7 +56,10 @@ def log(*a): print(*a, flush=True)
 def duration_of(path):
     r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path], capture_output=True, text=True)
     if r.returncode != 0: raise SystemExit(f"ffprobe could not read {path}: {r.stderr.strip()} (is ffmpeg installed and on PATH?)")
-    return float(r.stdout.strip())
+    try: d = float(r.stdout.strip())
+    except ValueError: d = 0.0
+    if d <= 0.5: raise SystemExit(f"ffprobe could not read {path}: no playable audio in it (damaged, or not an audio file)")
+    return d
 
 
 def check(path):
@@ -78,7 +104,7 @@ def make(args):
     log(f"song folder: {F}")
     step("1 audio -> song.wav", J("song.wav"), lambda: run(["ffmpeg", "-v", "error", "-y", "-i", src, "-vn", "-ac", "2", "-ar", "44100", J("song.wav")]), args.force)
     voc, inst = J("sep", "htdemucs", "song", "vocals.wav"), J("sep", "htdemucs", "song", "no_vocals.wav")
-    step("2 voice / band separation (Demucs)", voc, lambda: run(PY + ["-m", "demucs", "--two-stems", "vocals", "-n", "htdemucs", "-o", J("sep"), J("song.wav")]), args.force)
+    step("2 voice / band separation (Demucs)", voc, lambda: run(PY + ["-m", "demucs", "--two-stems", "vocals", "-n", "htdemucs"] + (["-d", "cuda"] if os.environ.get("LINSING_REQUIRE_GPU") == "1" else []) + ["-o", J("sep"), J("song.wav")]), args.force)
 
     def do_lines():
         regions = None
@@ -138,6 +164,22 @@ def bake(args):
     Q.report(F, Q.quick(F), log=log)
 
 
+def player_exe():
+    """the standalone player LinSing.exe (built with LinSingBuild; shipped in the package as player/). LINSING_USE_EDITOR=1 forces the editor."""
+    if os.environ.get("LINSING_USE_EDITOR") == "1": return None
+    for p in (os.environ.get("LINSING_PLAYER"), os.path.join(ROOT, "player", "LinSing.exe")):
+        if p and os.path.exists(p): return p
+    return None
+
+
+def play(args):
+    """the song in a window, with sound and captions (Esc closes it)"""
+    F = os.path.abspath(args.folder); pl = player_exe()
+    if not pl: raise SystemExit("LinSing.exe not found (player/): build it with Unity menu LinSing / Build Standalone Player, or use the Unity editor's Play")
+    subprocess.Popen([pl, "-song", F, "-mode", "live", "-screen-fullscreen", "0", "-screen-width", "1280", "-screen-height", "720", "-logFile", os.path.join(F, "player_live.log")])
+    log(f"playing {os.path.basename(F)} in a window (Esc closes it)")
+
+
 def find_unity():
     """Unity 6 for this project: LINSING_UNITY, then pipeline/config.json (written by doctor), then the editors Unity Hub knows,
     then Hub's default install folders. Returns (path or None, how it was found)."""
@@ -175,18 +217,23 @@ def load(args):
     log(open(os.path.join(F, "unity_load.log"), encoding="utf-8", errors="replace").read().split("[LinSing]")[-1].splitlines()[0][:300])
 
 
-def unity_watch(cmd, logf, done_file, watch_dir, stall=300):
+def unity_watch(cmd, logf, done_file, watch_dir, stall=300, expect=None):
     """Run Unity and watch its log: a script that does not compile leaves the editor waiting in safe mode for ever - stop it and say why.
-    Also stops it when nothing new has been written to watch_dir for `stall` seconds."""
+    Also stops it when nothing new has been written to watch_dir for `stall` seconds. `expect`: the chunk files it will write (progress lines)."""
     def kill(p): subprocess.run(["taskkill", "/PID", str(p.pid), "/T", "/F"] if os.name == "nt" else ["kill", "-9", str(p.pid)], capture_output=True)
     if os.path.exists(logf): os.remove(logf)
-    p = subprocess.Popen(cmd); last, last_t = -1, time.time()
+    p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); last, last_t = -1, time.time(); shown = -1
     while p.poll() is None:
-        time.sleep(5)
+        time.sleep(2)
+        if expect:
+            k = max(0, sum(os.path.exists(f) for f in expect) - 1)
+            if k != shown: shown = k; log(f"      progress {k}/{len(expect)}")
         txt = open(logf, encoding="utf-8", errors="replace").read() if os.path.exists(logf) else ""
         errs = sorted({l.strip() for l in txt.splitlines() if "error CS" in l})
         if errs: kill(p); raise SystemExit("Unity scripts do not compile - fix these first:\n  " + "\n  ".join(errs[:8]))
-        size = sum(os.path.getsize(os.path.join(watch_dir, f)) for f in os.listdir(watch_dir)) if os.path.isdir(watch_dir) else 0
+        pe = os.path.join(os.path.dirname(done_file), "player_error.txt")
+        if os.path.exists(pe): kill(p); raise SystemExit("the player stopped: " + open(pe, encoding="utf-8", errors="replace").read()[:800])
+        size =sum(os.path.getsize(os.path.join(watch_dir, f)) for f in os.listdir(watch_dir)) if os.path.isdir(watch_dir) else 0
         if size != last: last, last_t = size, time.time()
         elif size > 0 and not os.path.exists(done_file) and time.time() - last_t > stall: kill(p); raise SystemExit(f"Unity stopped writing ({size} bytes) - see {logf}")
         if os.path.exists(done_file):
@@ -246,9 +293,15 @@ def render(args):
         done = os.path.join(F, "render_done.txt")
         if os.path.exists(done): os.remove(done)
         t = time.time(); log(f"      Unity renders {sum(r[1] - r[0] for r, _ in todo) / fps:.0f} s of picture ({enc}); the editor window opens and closes by itself")
-        unity_watch([unity_exe(), "-projectPath", U, "-executeMethod", "LinSingTools.BatchRender", "-song", F, "-rangesFile", spec, "-height", str(h),
-                     "-ffmpeg", shutil.which("ffmpeg") or "ffmpeg", "-encoder", enc, "-logFile", os.path.join(F, "unity_render.log")],
-                    os.path.join(F, "unity_render.log"), done, CH)
+        ff = shutil.which("ffmpeg") or "ffmpeg"; pl = player_exe()
+        if pl:                                                    # the standalone player (no Unity editor needed): renders without a window
+            cmd = [pl, "-batchmode", "-song", F, "-mode", "render", "-ranges", spec, "-height", str(h), "-ffmpeg", ff, "-encoder", enc, "-done", done,
+                   "-logFile", os.path.join(F, "unity_render.log")]
+        else:
+            cmd = [unity_exe(), "-projectPath", U, "-executeMethod", "LinSingTools.BatchRender", "-song", F, "-rangesFile", spec, "-height", str(h),
+                   "-ffmpeg", ff, "-encoder", enc, "-logFile", os.path.join(F, "unity_render.log")]
+        unity_watch(cmd, os.path.join(F, "unity_render.log"), done, CH, expect=[path(r, s) for r, s in todo])
+        log(f"      progress {len(todo)}/{len(todo)}")
         missing = [path(r, s) for r, s in todo if not os.path.exists(path(r, s)) or os.path.getsize(path(r, s)) < 1000]
         if missing: raise SystemExit(f"{len(missing)} chunk(s) were not written - see unity_render.log")
         el = time.time() - t; log(f"      rendered in {el:.0f} s ({sum(r[1] - r[0] for r, _ in todo) / max(1, el):.1f} frames/s including Unity start-up)")
@@ -296,6 +349,14 @@ def qa(args):
     sys.exit(0 if Q.report(F, checks, log=log) else 1)
 
 
+def studio(args):
+    """app: the home page over songs/ (normal mode); studio <song folder>: straight into that song's timeline editor (advanced mode)"""
+    from lin_sing import studio as S
+    F = os.path.abspath(getattr(args, "folder", None) or os.path.join(ROOT, "songs"))
+    if os.path.exists(os.path.join(F, "song.json")): S.serve(os.path.dirname(F), args.port, not args.no_browser, first_song=os.path.basename(F))
+    else: S.serve(F, args.port, not args.no_browser)
+
+
 def doctor(args):
     from lin_sing import doctor as D
     sys.exit(1 if D.run(log=log, fix=args.fix) else 0)
@@ -307,16 +368,17 @@ def main():
     m = sp.add_parser("make"); m.add_argument("audio"); m.add_argument("--lyrics"); m.add_argument("--lang", choices=["ja", "zh", "en"]); m.add_argument("--name")
     m.add_argument("--mood", choices=["neutral", "sad", "bright"], default="neutral", help="the faces she makes (editable later in choreo.json)")
     m.add_argument("--asr-model", default="large-v3"); m.add_argument("--render", action="store_true"); m.add_argument("--force", action="store_true")
-    for c in ("bake", "load"): sp.add_parser(c).add_argument("folder")
+    for c in ("bake", "load", "play"): sp.add_parser(c).add_argument("folder")
     r = sp.add_parser("render"); r.add_argument("folder"); r.add_argument("--from", dest="t_from", type=float); r.add_argument("--to", dest="t_to", type=float)
     r.add_argument("--height", type=int, help="picture height (default 1080, a part: 720)"); r.add_argument("--no-subs", action="store_true", help="no lyric captions")
     sp.add_parser("check").add_argument("audio")
     sp.add_parser("clean-scene")
     q = sp.add_parser("qa"); q.add_argument("folder"); q.add_argument("--deep", action="store_true"); q.add_argument("--step", type=float, default=0.1)
     so = sp.add_parser("studio"); so.add_argument("folder"); so.add_argument("--port", type=int, default=8765); so.add_argument("--no-browser", action="store_true")
+    ap_ = sp.add_parser("app"); ap_.add_argument("--port", type=int, default=8765); ap_.add_argument("--no-browser", action="store_true")
     dr = sp.add_parser("doctor"); dr.add_argument("--fix", action="store_true", help="also download the models")
     a = ap.parse_args()
-    {"make": make, "bake": bake, "load": load, "render": render, "check": lambda a: check(a.audio), "clean-scene": clean_scene, "doctor": doctor, "qa": qa, "studio": lambda a: __import__("lin_sing.studio", fromlist=["serve"]).serve(a.folder, a.port, not a.no_browser)}[a.cmd](a)
+    {"make": make, "bake": bake, "load": load, "render": render, "check": lambda a: check(a.audio), "clean-scene": clean_scene, "play": play, "doctor": doctor, "qa": qa, "studio": studio, "app": studio}[a.cmd](a)
 
 
 if __name__ == "__main__":

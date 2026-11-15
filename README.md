@@ -15,6 +15,24 @@
 
 > English: lin-sing makes a VRM character (lin) sing any song up to 10 minutes. It separates the vocals, aligns every syllable, builds a lip-sync and face track, analyses tempo, bars and loudness, writes an editable choreography, bakes the body animation and the camera, and renders in Unity 6. Agents (Claude, ChatGPT/Codex, DeepSeek, Trae, Cursor…) drive it through `AGENTS.md`, an MCP server, or function-calling definitions.
 
+## 不懂技术？用整合包（Windows + NVIDIA 显卡）
+一个压缩包里装好了全部东西：Python、AI 模型、ffmpeg、lin 的播放器。不用装 Unity，不用联网，解压后双击就能用。
+- **下载**：整合包放在网盘（链接见仓库的 Releases 页面或作者主页），分卷压缩，约 7–8 GB。
+- **电脑要求**：
+  - Windows 10/11 64 位；
+  - NVIDIA RTX 20 系 / GTX 16 系或更新的显卡，显存 6 GB 以上；
+  - 内存 16 GB 以上，磁盘留 10 GB。
+  - 配置不够时，启动程序会直接说明原因，不会硬跑。暂不支持 AMD 显卡（在测试中）、Intel 显卡和 Mac。
+- **用法**：
+  1. 解压后双击「启动 lin-sing.bat」，浏览器会自动打开；
+  2. 拖入歌曲，粘贴歌词（可选），选择这首歌的感觉，点“生成”；
+  3. 一首 4 分钟左右的歌约 3–8 分钟出片。
+- **两种模式**：
+  - 普通模式：上面这套，一键生成；
+  - 高级模式：在时间轴编辑器里逐段改动作、表情、镜头，或者让 Claude Code / Kimi Code / Codex 等智能体按 AGENTS.md 来驱动。
+- **授权**：整合包里的 MMS_FA 对齐模型仅限非商用，所以整合包整体仅供非商业使用。
+- **自己打包**：见 `tools/package/`（`build_package.py`，组装好以后用 `fresh_env_test.py` 模拟一台干净的电脑来验收）。
+
 ## 要解决的问题
 - **花钱**：付费 AI 数字人和视频生成按秒、按次收费，一首四分钟的歌要做好几遍，费用很快就上去了。
 - **没法改**：生成出来就是一段视频。手不对、表情不对，只能整段重新抽卡。

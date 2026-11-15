@@ -6,3 +6,4 @@
 *.ttf binary
 *.bin binary
 *.bat text eol=crlf
+tools/package/files/*.txt text eol=crlf

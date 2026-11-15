@@ -115,6 +115,14 @@ def parse_lyrics_file(path):
 HALLUCINATIONS = ("ご視聴ありがとうございました", "ご視聴ありがとう", "チャンネル登録", "字幕", "请不吝点赞", "订阅", "谢谢观看", "明镜与点点", "thanksforwatching", "subscribe", "amara.org")
 
 
+def need_gpu(torch):
+    """cuda when there is one. The package (LINSING_REQUIRE_GPU=1) serves NVIDIA graphics only: no slow CPU fallback, a clear stop instead."""
+    if torch.cuda.is_available(): return "cuda"
+    if os.environ.get("LINSING_REQUIRE_GPU") == "1":
+        raise SystemExit("NO_GPU: 没有检测到可用的 NVIDIA 显卡（或驱动太旧）。lin-sing 需要 NVIDIA RTX 20 / GTX 16 系或更新的显卡，并安装最新驱动。")
+    return "cpu"
+
+
 def whisper_words(vocals_wav, lang=None, model_name="large-v3", log=print):
     """faster-whisper on the vocal stem: [(start, end, word)] and the detected language"""
     os.environ.setdefault("HF_HOME", os.path.join(os.path.expanduser("~"), ".cache", "huggingface"))
@@ -127,11 +135,13 @@ def whisper_words(vocals_wav, lang=None, model_name="large-v3", log=print):
     from scipy.signal import resample_poly
     from faster_whisper import WhisperModel
     import torch
-    dev = "cuda" if torch.cuda.is_available() else "cpu"
+    dev = need_gpu(torch)
     if dev == "cpu" and model_name == "large-v3": model_name = "small"; log("  no CUDA GPU: using the Whisper 'small' model on the CPU (slower, less accurate)")
     ct = "float16" if dev == "cuda" else "int8"
     try: m = WhisperModel(model_name, device=dev, compute_type=ct, local_files_only=True)        # cached: no network check (it can hang behind a proxy)
-    except Exception: log(f"  downloading the Whisper model '{model_name}' (once)..."); m = WhisperModel(model_name, device=dev, compute_type=ct)
+    except Exception:
+        if os.environ.get("HF_HUB_OFFLINE") == "1": raise SystemExit(f"Whisper model '{model_name}' is missing from the package (models/hf) - re-extract the package")
+        log(f"  downloading the Whisper model '{model_name}' (once)..."); m = WhisperModel(model_name, device=dev, compute_type=ct)
     x, sr = sf.read(vocals_wav)
     if x.ndim > 1: x = x.mean(1)
     x16 = resample_poly(x, 16000, sr).astype(np.float32)
@@ -275,7 +285,7 @@ def align(vocals_wav, lines, lang, log=print, max_window=30.0, regions=None):
     x, sr = sf.read(vocals_wav)
     if x.ndim > 1: x = x.mean(1)
     x16 = resample_poly(x, 16000, sr).astype(np.float32); dur = len(x16) / 16000.0
-    bundle = torchaudio.pipelines.MMS_FA; dev = "cuda" if torch.cuda.is_available() else "cpu"
+    bundle = torchaudio.pipelines.MMS_FA; dev = need_gpu(torch)
     model = bundle.get_model(with_star=False).to(dev).eval(); tokenizer = bundle.get_tokenizer(); aligner = bundle.get_aligner()
     hop = 160; e = np.array([np.sqrt(np.mean(x16[i:i + 400] ** 2)) for i in range(0, len(x16) - 400, hop)]); db = 20 * np.log10(e + 1e-7)
     top = np.percentile(db[db > -60], 97) if (db > -60).any() else -20; voiced = db > top - 38

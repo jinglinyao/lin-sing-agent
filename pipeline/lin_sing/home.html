@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>lin-sing</title>
+<style>
+:root { --bg:#0f1222; --panel:#171b31; --panel2:#1d2242; --line:#2a3052; --ink:#eef0f8; --mute:#9aa3c7; --acc:#f2b8c6; --acc2:#8fd3ff; --ok:#9be3b0; --bad:#ff9a9a; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 system-ui, "Microsoft YaHei", "PingFang SC", sans-serif; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
+header h1 { font-size: 34px; margin: 0; letter-spacing: 1px; } header h1 span { color: var(--acc); }
+header p { margin: 0; color: var(--mute); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px; margin-bottom: 18px; }
+.card h2 { font-size: 19px; margin: 0 0 14px; }
+#drop { border: 2px dashed #3a4272; border-radius: 14px; padding: 30px 16px; text-align: center; cursor: pointer; transition: .15s; }
+#drop:hover, #drop.over { border-color: var(--acc); background: rgba(242,184,198,.06); }
+#drop b { font-size: 17px; } #drop .hint { color: var(--mute); margin-top: 6px; }
+#drop.has { border-style: solid; border-color: var(--acc2); }
+label.t { display: block; margin: 16px 0 6px; color: var(--mute); }
+textarea { width: 100%; min-height: 130px; background: #0b0e1c; color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font: 14px/1.6 inherit; resize: vertical; }
+.moods { display: flex; gap: 10px; flex-wrap: wrap; }
+.moods label { background: var(--panel2); border: 1px solid var(--line); border-radius: 99px; padding: 7px 16px; cursor: pointer; }
+.moods input { display: none; } .moods label:has(input:checked) { border-color: var(--acc); color: var(--acc); }
+button { background: var(--panel2); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; font: inherit; cursor: pointer; }
+button:hover { border-color: var(--acc2); } button:disabled { opacity: .45; cursor: default; }
+button.go { background: var(--acc); color: #1a1020; border-color: var(--acc); font-weight: 700; font-size: 17px; padding: 12px 26px; margin-top: 18px; }
+.note { color: var(--mute); font-size: 13px; margin-top: 8px; }
+.steps { list-style: none; padding: 0; margin: 6px 0 0; }
+.steps li { padding: 5px 0; display: flex; gap: 10px; align-items: center; color: var(--mute); }
+.steps li .i { width: 20px; text-align: center; }
+.steps li.done { color: var(--ink); } .steps li.done .i { color: var(--ok); }
+.steps li.running { color: var(--acc); font-weight: 600; }
+.spin { display: inline-block; animation: s 1s linear infinite; } @keyframes s { to { transform: rotate(360deg); } }
+.err { background: rgba(255,154,154,.08); border: 1px solid var(--bad); color: #ffd6d6; border-radius: 12px; padding: 12px 14px; margin-top: 12px; }
+details { margin-top: 8px; color: var(--mute); } pre { white-space: pre-wrap; font-size: 12px; max-height: 220px; overflow: auto; background: #0b0e1c; padding: 8px; border-radius: 8px; }
+video { width: 100%; border-radius: 12px; background: #000; margin-top: 12px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.songs { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.song { background: var(--panel2); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+.song b { display: block; font-size: 16px; word-break: break-all; } .song .m { color: var(--mute); font-size: 13px; }
+.song .row button { padding: 5px 10px; font-size: 13px; }
+a { color: var(--acc2); }
+footer { color: var(--mute); font-size: 13px; text-align: center; margin-top: 26px; }
+</style></head><body><div class="wrap">
+<header><h1>lin-<span>sing</span></h1><p>给一首歌，lin 唱给你听。全程在这台电脑上完成，不联网。</p></header>
+
+<div class="card" id="newCard">
+  <h2>新建作品</h2>
+  <div id="drop"><b>把歌曲拖到这里，或者点一下选择文件</b><div class="hint">mp3、wav、flac、m4a 都可以，最长 10 分钟</div></div>
+  <input type="file" id="file" accept="audio/*,.mp3,.wav,.flac,.m4a,.aac,.ogg" style="display:none">
+  <label class="t">歌词（可以不填）：一行一句；要显示翻译，就写成“原文 | 译文”</label>
+  <textarea id="lyrics" placeholder="例：&#10;君が生きていたならそれでいい | 只要你活着就好&#10;&#10;不填的话，程序会自己听歌词，但准确度低一些。"></textarea>
+  <label class="t">这首歌的感觉</label>
+  <div class="moods">
+    <label><input type="radio" name="mood" value="neutral" checked>平静</label>
+    <label><input type="radio" name="mood" value="sad">伤感</label>
+    <label><input type="radio" name="mood" value="bright">明快</label>
+  </div>
+  <button class="go" id="go" disabled>生成 lin 的演唱视频</button>
+  <div class="note">一首 4 分钟左右的歌大约要 3–8 分钟。处理时请不要关闭那个黑色的窗口。</div>
+</div>
+
+<div class="card" id="runCard" style="display:none">
+  <h2 id="runTitle">正在制作</h2>
+  <ul class="steps" id="steps"></ul>
+  <div id="runErr"></div>
+  <div id="runDone"></div>
+</div>
+
+<div class="card">
+  <h2>我的作品</h2>
+  <div class="songs" id="songs"><div class="note">还没有作品。</div></div>
+</div>
+
+<footer>你的歌和歌词不会离开这台电脑。高级模式：作品卡片上的“高级编辑”，或用 AI 智能体驱动（见 AGENTS.md）。</footer>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const TOKEN = (document.querySelector('meta[name="lin-token"]') || {}).content || "";
+const api = (p, o = {}) => fetch(p, { ...o, headers: { ...(o.headers || {}), "X-LinSing-Token": TOKEN } });
+const MEDIA = (s, f) => "/media/" + encodeURIComponent(s) + "/" + encodeURIComponent(f);
+const fmt = t => t == null ? "" : `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, "0")}`;
+let chosen = null, polling = false;
+
+const drop = $("#drop"), file = $("#file");
+drop.onclick = () => file.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); if (e.dataTransfer.files[0]) choose(e.dataTransfer.files[0]); };
+file.onchange = () => file.files[0] && choose(file.files[0]);
+function choose(f) {
+  chosen = f; drop.classList.add("has");
+  drop.innerHTML = `<b>${f.name.replace(/</g, "&lt;")}</b><div class="hint">${(f.size / 1048576).toFixed(1)} MB · 点一下可以换一首</div>`;
+  $("#go").disabled = false;
+}
+
+$("#go").onclick = () => {
+  if (!chosen) return; $("#go").disabled = true; showRun("上传中…", []);
+  const x = new XMLHttpRequest(); x.open("POST", "/api/upload?file=" + encodeURIComponent(chosen.name)); x.setRequestHeader("X-LinSing-Token", TOKEN);
+  x.upload.onprogress = e => { if (e.lengthComputable) $("#runTitle").textContent = `上传中… ${Math.round(100 * e.loaded / e.total)}%`; };
+  x.onload = async () => {
+    const r = JSON.parse(x.responseText || "{}");
+    if (x.status !== 200) { fail(r.error || "上传失败"); return; }
+    const res = await api("/api/new", { method: "POST", body: JSON.stringify({ song: r.song, lyrics: $("#lyrics").value, mood: document.querySelector('input[name=mood]:checked').value }) });
+    const j = await res.json(); if (!res.ok) { fail(j.error || "没能开始"); return; }
+    poll();
+  };
+  x.onerror = () => fail("上传失败：程序窗口是不是被关掉了？"); x.send(chosen);
+};
+
+function showRun(title, steps) {
+  $("#runCard").style.display = ""; $("#runTitle").textContent = title; $("#runErr").innerHTML = ""; $("#runDone").innerHTML = "";
+  $("#steps").innerHTML = steps.map(s => `<li class="${s.state}"><span class="i">${s.state === "done" ? "✓" : s.state === "running" ? '<span class="spin">◐</span>' : "·"}</span>${s.label}${s.detail ? "（" + s.detail + "）" : ""}</li>`).join("");
+}
+function fail(msg, log) {
+  $("#runErr").innerHTML = `<div class="err">${msg}</div>` + (log ? `<details><summary>详细日志（发给开发者用）</summary><pre>${log.replace(/</g, "&lt;")}</pre></details>` : "");
+  $("#go").disabled = !chosen;
+}
+async function poll() {
+  if (polling) return; polling = true;
+  while (true) {
+    const t = await (await api("/api/task")).json();
+    const label = t.name === "new" ? `正在制作：${t.song}` : t.name === "render" ? `正在渲染：${t.song}` : t.name === "bake" ? `正在更新：${t.song}` : "正在处理";
+    showRun(t.running ? `${label}（已用 ${fmt(t.elapsed)}）` : (t.result && t.result.ok ? `完成：${t.song}` : `没有完成：${t.song}`), t.name === "new" ? t.steps : []);
+    if (!t.running) {
+      if (t.result && t.result.ok && t.result.video) {
+        $("#runDone").innerHTML = `<video controls src="${MEDIA(t.song, t.result.video)}?${Date.now()}"></video>
+          <div class="row"><a href="${MEDIA(t.song, t.result.video)}?download"><button>下载视频</button></a>
+          <button onclick="play('${t.song}')">实时播放（新窗口）</button><a href="/edit?song=${encodeURIComponent(t.song)}"><button>高级编辑</button></a></div>`;
+      } else if (t.result && !t.result.ok) fail(t.result.error || "出错了", t.log);
+      $("#go").disabled = !chosen; polling = false; list(); return;
+    }
+    await new Promise(r => setTimeout(r, 1000));
+  }
+}
+async function play(s) { await api("/api/play?song=" + encodeURIComponent(s), { method: "POST", body: "{}" }); }
+async function list() {
+  const d = await (await api("/api/songs")).json();
+  $("#songs").innerHTML = d.songs.length ? d.songs.map(s => `<div class="song"><b>${s.name}</b><div class="m">${s.duration ? fmt(s.duration) : ""} ${s.lang || ""} ${s.video ? "· 已出视频" : s.ready ? "· 未渲染" : "· 未完成"}</div>
+    <div class="row">${s.video ? `<a href="${MEDIA(s.name, s.video)}" target="_blank"><button>看视频</button></a><a href="${MEDIA(s.name, s.video)}?download"><button>下载</button></a>` : ""}
+    ${s.ready ? `<button onclick="play('${s.name}')">实时播放</button><a href="/edit?song=${encodeURIComponent(s.name)}"><button>高级编辑</button></a>` : ""}</div></div>`).join("") : '<div class="note">还没有作品。</div>';
+  if (d.busy) poll();
+}
+list();
+</script></body></html>

@@ -32,12 +32,18 @@ public class LyricOverlay : MonoBehaviour
         if (cur == null) return;
         float a = Mathf.Clamp01(Mathf.Min((t - cur.t0) / 0.18f, (cur.t1 - t) / 0.26f));
         float s = Screen.height / 1080f;
-        if (font == null) font = Font.CreateDynamicFontFromOSFont(new[] { "Noto Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", "Yu Gothic UI", "PingFang SC", "Hiragino Sans", "Arial Unicode MS", "Arial" }, 58);
+        if (font == null)
+        {
+            // Unity gives up when the FIRST name is not installed (found in the standalone player: no captions at all), so pick one that exists
+            var have = new System.Collections.Generic.HashSet<string>(Font.GetOSInstalledFontNames());
+            var pick = System.Array.Find(new[] { "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", "Yu Gothic UI", "Meiryo UI", "SimHei", "PingFang SC", "Hiragino Sans", "Malgun Gothic", "Arial Unicode MS", "Arial" }, have.Contains);
+            font = Font.CreateDynamicFontFromOSFont(pick ?? "Arial", 58);
+        }
         if (main == null) { main = new GUIStyle { font = font, alignment = TextAnchor.LowerCenter, fontStyle = FontStyle.Bold, wordWrap = true }; sub = new GUIStyle(main) { fontStyle = FontStyle.Normal }; shade = new GUIStyle(main); }
         main.fontSize = Mathf.RoundToInt(58 * s); sub.fontSize = Mathf.RoundToInt(38 * s); shade.fontSize = main.fontSize;
         bool two = !string.IsNullOrEmpty(cur.trans);
-        var r1 = new Rect(120 * s, 0, Screen.width - 240 * s, Screen.height - (two ? 96f : 52f) * s);
-        var r2 = new Rect(120 * s, 0, Screen.width - 240 * s, Screen.height - 46f * s);
+        var r1 = new Rect(120 * s, 0, Screen.width - 240 * s, Screen.height - (two ? 128f : 84f) * s);      // above the live player's control bar
+        var r2 = new Rect(120 * s, 0, Screen.width - 240 * s, Screen.height - 78f * s);
         Draw(r1, cur.text, main, new Color(0.95f, 0.96f, 0.97f, a), a);
         if (two) Draw(r2, cur.trans, sub, new Color(0.90f, 0.87f, 0.85f, a), a);
     }

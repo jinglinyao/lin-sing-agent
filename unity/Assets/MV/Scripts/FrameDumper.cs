@@ -290,6 +290,7 @@ public class FrameDumper : MonoBehaviour
                 StepCamera(t, f == f0 - pre, 1f / fps);
                 yield return new WaitForEndOfFrame();
                 if (f < f0) continue;
+                if (Application.isBatchMode) cam.Render();          // a windowless player (-batchmode) draws no camera by itself
                 pending.Enqueue(UnityEngine.Rendering.AsyncGPUReadback.Request(rt, 0, TextureFormat.RGB24));
                 Flush(2); Written++;
             }

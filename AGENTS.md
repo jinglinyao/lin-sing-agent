@@ -21,7 +21,9 @@
 | 只渲染一段预览（720p） | `python linsing.py render ../songs/<名字> --from 60 --to 90` |
 | 质检（几秒） | `python linsing.py qa ../songs/<名字>`（`bake` 结束时也会自动跑） |
 | 深度质检（Unity 逐帧穿模扫描，几分钟） | `python linsing.py qa ../songs/<名字> --deep` |
-| 网页时间轴编辑器 | `python linsing.py studio ../songs/<名字>` |
+| 网页时间轴编辑器（一首歌） | `python linsing.py studio ../songs/<名字>` |
+| 网页首页（普通模式：上传→生成→下载，多首歌） | `python linsing.py app` |
+| 在窗口里带声音实时播放 | `python linsing.py play ../songs/<名字>`（需要 `player/LinSing.exe`） |
 | 环境自检 / 下载模型 | `python linsing.py doctor [--fix]` |
 
 ## 用户给歌词时（推荐）
@@ -79,6 +81,11 @@
    - 右手握麦约 30–35%。
 4. 如实向用户报告没检查到的部分，不要只看日志就说“完成”。
 5. 调参数时，必须用至少两首风格不同的歌检验，不能只看一首。
+
+## 渲染程序和整合包
+- `player/LinSing.exe` 是用 Unity 菜单 **LinSing / Build Standalone Player** 编译出的独立程序，存在时 `render` 和 `play` 都用它，不需要 Unity 编辑器；设 `LINSING_USE_EDITOR=1` 可以强制改用编辑器。改了 `unity/Assets/MV/Scripts` 里的代码，要重新编译。
+- 整合包里（根目录有 `models/`）程序自动离线：只用包内的模型和 ffmpeg，不联网；只用 NVIDIA 显卡，没有显卡就报错停下，不会退回 CPU。
+- 组装整合包：`python tools/package/build_package.py <输出目录> --hf <HF 缓存> --torch <torch 缓存>`。验收：`python tools/package/fresh_env_test.py <包目录> <日志> runtime/python/python.exe -s -X utf8 pipeline/launcher.py`，模拟一台只有 Windows、没有网络的电脑。
 
 ## 不要做的事
 - 不要把歌曲音频、渲染出的帧或视频提交进仓库（`songs/` 已在 .gitignore 里）。

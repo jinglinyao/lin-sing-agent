@@ -116,7 +116,8 @@ def plan(folder, seed=7, mood="neutral"):
     st, phrases, dur = analyse(folder); rnd = random.Random(seed)
     sheet = []; recent = []; mic_time = 0.0; sung = 0.0; pole_since = 0.0; mic_since = 1e9
     first = phrases[0]["t"] if phrases else dur
-    sheet.append(dict(t=0.0, end=round(max(0.0, first - 0.05), 3), move="rest", level=-1))
+    if first >= 2.5: sheet.append(dict(t=0.0, end=round(max(0.0, first - 0.05), 3), move="rest", level=-1))
+    elif phrases: phrases[0]["t"] = 0.0                                    # the voice comes in at once: the first phrase starts the piece
     for i, p in enumerate(phrases):
         nxt = phrases[i + 1]["t"] if i + 1 < len(phrases) else dur
         if i and p["t"] - phrases[i - 1]["end"] > 6.0:                    # a long gap without voice: an interlude
@@ -276,9 +277,11 @@ def bake(folder, log=print):
     def E(t, pose, name="", **o): return dict(t=t, pose=pose, name=name, **o)
     def shifted(pose, d): q = dict(pose); q["pos"] = np.array(pose["pos"]) + V(*d); return q
 
-    R = [E(T0, P["IDLE"])]; L = [E(T0, M(P["POLE"]))]
-    rg = [(T0, 0.0)]; rc = [(T0, 0.0)]; lg = [(T0, 1.0)]; lc = [(T0, 1.0)]
-    r_on, l_on = False, True; look = []; mouth = [(T0, 0.35)]
+    # she starts in the first move's pose (a song that begins with the voice gives no time to get there from a rest pose)
+    m0 = MOVES[sheet[0]["move"]]; r_on, l_on = m0["R"] == "MIC", m0["L"] == "POLE"
+    R = [E(T0, P["MIC"] if r_on else P[m0["R"]])]; L = [E(T0, M(P["POLE"]) if l_on else M(P[m0["L"]]))]
+    rg = [(T0, float(r_on))]; rc = [(T0, float(r_on))]; lg = [(T0, float(l_on))]; lc = [(T0, float(l_on))]
+    look = []; mouth = [(T0, 0.35)]
     for k, s in enumerate(sheet):
         m = MOVES[s["move"]]; ta = max(s["t"] + (0.10 if m["level"] >= 0 else 0.6), (R[-1]["t"] if R else 0) + 0.5)
         if k == 0: ta = T0 + 0.01

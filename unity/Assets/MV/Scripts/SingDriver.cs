@@ -27,6 +27,7 @@ public class LipTrack
 public partial class SingDriver : MonoBehaviour
 {
     public TextAsset lipJson;
+    [NonSerialized] public string lipPath;          // lin-sing standalone player: face track read from a file (takes precedence over lipJson)
     public AudioSource audioSource;
     public SkinnedMeshRenderer face;
     public Animator animator;
@@ -104,9 +105,10 @@ public partial class SingDriver : MonoBehaviour
 
     void Load()
     {
-        if (track == null && lipJson != null)
+        bool fromFile = !string.IsNullOrEmpty(lipPath) && System.IO.File.Exists(lipPath);      // the standalone player reads face.json from the song folder
+        if (track == null && (lipJson != null || fromFile))
         {
-            track = JsonUtility.FromJson<LipTrack>(lipJson.text);
+            track = JsonUtility.FromJson<LipTrack>(fromFile ? System.IO.File.ReadAllText(lipPath) : lipJson.text);
             var mesh = face.sharedMesh;
             shapeIndex = new int[track.names.Length];
             for (int i = 0; i < shapeIndex.Length; i++) shapeIndex[i] = mesh.GetBlendShapeIndex(track.names[i]);

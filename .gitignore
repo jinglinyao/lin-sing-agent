@@ -16,3 +16,4 @@ __pycache__/
 docs/guide/*.ttf
 .venv/
 pipeline/config.json
+player/

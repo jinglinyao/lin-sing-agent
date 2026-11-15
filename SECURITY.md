@@ -18,7 +18,9 @@
 | Unity 工程 | 打开工程时，Unity 会自动编译并运行 `unity/Assets/MV/` 下的编辑器脚本（Unity 的正常行为） | 只从可信来源获取本工程 |
 | MCP 服务 `pipeline/mcp_server.py` | 通过标准输入输出与智能体通信，不开网络端口；把智能体的请求转成 `linsing.py` 命令（参数以列表传递，不经过 shell） | 智能体可以让它读取你电脑上任意路径的音频，并写入 `songs/`。请在客户端里保留工具调用的审批，不要用“全部自动批准”模式 |
 | 项目级 MCP 配置 `.mcp.json`、`.kimi-code/mcp.json` | 你信任这个文件夹后，Claude Code / Kimi Code 会在会话开始时运行 `python pipeline/mcp_server.py` | 客户端弹出信任提示时，核对这条命令再确认 |
-| 网页编辑器 `linsing.py studio` | 本地 HTTP 服务 | 见下一节 |
+| 网页 `linsing.py app` / `studio` | 本地 HTTP 服务，可以接收你上传的歌曲 | 见下一节 |
+| 渲染程序 `player/LinSing.exe` | Unity 编译的独立程序，读取歌曲文件夹并渲染或播放；Unity 的数据统计和崩溃上报都已关闭，不联网 | — |
+| 整合包启动程序 `启动 lin-sing.bat` | 检查电脑配置后打开网页；缺 Microsoft VC++ 运行库时运行包内的官方安装程序（会弹出管理员确认） | 整合包里的程序全部离线运行（强制离线模式） |
 
 ## 3. 网页编辑器（studio）的防护
 - **只监听本机**：只监听 `127.0.0.1`，局域网和外网都连不上。不要用端口转发、内网穿透之类的方式把它暴露出去。

@@ -26,7 +26,7 @@ kbd { background: #20254a; border: 1px solid var(--line); border-radius: 4px; pa
 @media (max-width: 860px) { main { grid-template-columns: 1fr; height: auto; } #tl { height: 380px; } aside { border-top: 1px solid var(--line); } }
 </style></head><body>
 <header>
-  <h1>lin-<span>sing</span> studio</h1>
+  <a href="/" style="color:var(--mute);text-decoration:none">← 我的作品</a><h1>lin-<span>sing</span> 高级编辑</h1>
   <button id="play">▶ 播放</button><span id="time">0:00.0</span>
   <button id="zin">放大</button><button id="zout">缩小</button>
   <span style="flex:1"></span>
@@ -66,7 +66,9 @@ kbd { background: #20254a; border: 1px solid var(--line); border-radius: 4px; pa
 <script>
 const $ = s => document.querySelector(s);
 const TOKEN = (document.querySelector('meta[name="lin-token"]') || {}).content || "";
-const api = (p, o = {}) => fetch(p, { ...o, headers: { ...(o.headers || {}), "X-LinSing-Token": TOKEN } });
+const SONG = new URLSearchParams(location.search).get("song") || "";
+const api = (p, o = {}) => fetch(p + (p.includes("?") ? "&" : "?") + "song=" + encodeURIComponent(SONG), { ...o, headers: { ...(o.headers || {}), "X-LinSing-Token": TOKEN } });
+const MEDIA = f => "/media/" + encodeURIComponent(SONG) + "/" + encodeURIComponent(f);
 const cv = $("#cv"), ctx = cv.getContext("2d"), au = $("#au");
 let D = null, sheet = [], sel = -1, view = { t0: 0, pps: 40 }, range = null, drag = null, dirty = false;
 const ROWS = { ruler: [0, 22], wave: [22, 70], bars: [92, 20], lines: [112, 44], moves: [156, 52], faces: [208, 24], qa: [232, 18] };
@@ -76,7 +78,7 @@ const X = t => (t - view.t0) * view.pps, T = x => view.t0 + x / view.pps;
 
 async function load() {
   D = await (await api("/api/data")).json(); sheet = JSON.parse(JSON.stringify(D.choreo.sheet));
-  au.src = "/media/song.wav"; $("#mood").value = D.choreo.mood || "neutral";
+  au.src = MEDIA("song.wav"); $("#mood").value = D.choreo.mood || "neutral";
   $("#songinfo").textContent = `${D.song.name} · ${fmt(D.song.duration)} · ${Math.round(D.song.bpm)} BPM · ${D.song.lang} · ${sheet.length} 条动作`;
   $("#move").innerHTML = D.choreo.moves.map(m => `<option value="${m}">${m}（${({"-1":"无人声","0":"安静","1":"中等","2":"饱满"})[D.move_levels[m]]}）</option>`).join("");
   $("#face").innerHTML = `<option value="">自动</option>` + (D.choreo.faces || []).map(f => `<option>${f}</option>`).join("");
@@ -184,7 +186,7 @@ async function render(from, to) {
   if (dirty) { log("先“保存并烘焙”，再渲染"); return; }
   ["#save", "#prev", "#full"].forEach(b => $(b).disabled = true);
   await api("/api/render", { method: "POST", body: JSON.stringify(from == null ? {} : { from, to }) });
-  poll(s => { if (s.result && s.result.video) { const v = $("#vid"); v.style.display = ""; v.src = "/media/" + s.result.video + "?" + Date.now(); v.play(); } });
+  poll(s => { if (s.result && s.result.video) { const v = $("#vid"); v.style.display = ""; v.src = MEDIA(s.result.video) + "?" + Date.now(); v.play(); } });
 }
 $("#prev").onclick = () => { let r = range; if (!r && sel >= 0) r = [Math.max(0, sheet[sel].t - 2), Math.min(D.song.duration, (sheet[sel + 1] ? sheet[sel + 1].t : D.song.duration) + 2)]; if (!r) { log("先 Shift+拖动 选一段，或选中一条动作"); return; } render(Math.round(r[0] * 10) / 10, Math.round(r[1] * 10) / 10); };
 $("#full").onclick = () => render(null, null);
